@@ -281,13 +281,9 @@ def quit_bad(cleanup, exitcode = 1):
     print(f"{bcolors.FAIL}bisect: bad{bcolors.ENDC}")
     sys.exit(exitcode)
 
-def quit_skip(cleanup, skip_cache):
+def quit_skip(cleanup):
     run_cleanup(cleanup)
-    # TODO skip_cache instance variable
     print(f"{bcolors.OKBLUE}bisect: skip{bcolors.ENDC}")
-    if skip_cache is not None:
-        skip_cache[drv] = (cur_commit(), "skip")
-        cache_to_file(skip_cache, CACHE_FILE)
     sys.exit(125)
 
 def signal_handler(sig, frame):
@@ -320,9 +316,6 @@ def main():
 
     args = parser.parse_args()
     CACHE_FILE='.nix-bisect-cache'
-    skip_cache = cache_from_file(CACHE_FILE)
-    if args.no_skip_range:
-        skip_cache = dict()
 
     while True:
         if args.run_before is not None:
@@ -341,8 +334,8 @@ def main():
         print(drv)
         if drv is None:
             print("Failed")
-            quit_skip(args.run_after, skip_cache)
-        cached = skip_cache.get(drv)
+            quit_skip(args.run_after)
+        cached = None
         if cached is not None:
             (commit, result) = cached
             if result == "skip":
@@ -359,15 +352,13 @@ def main():
         print("Ignoring cache")
         success = None
     if success is None:
-            print("Building dependencies")
-            success = build_dependencies(drv)
-            if not success:
-                print(f"Dependencies failed. Skipping.")
-                skip_cache[drv] = (cur_commit(), "skip")
-                cache_to_file(skip_cache, CACHE_FILE)
-                quit_skip(args.run_after, skip_cache)
-            print("Building target")
-            (log, success) = nix_build(drv, timeout = args.timeout, on_timeout=args.on_timeout, failure_line = args.failure_line, success_line = args.success_line)
+        print("Building dependencies")
+        success = build_dependencies(drv)
+        if not success:
+            print(f"Dependencies failed. Skipping.")
+            quit_skip(args.run_after)
+        print("Building target")
+        (log, success) = nix_build(drv, timeout = args.timeout, on_timeout=args.on_timeout, failure_line = args.failure_line, success_line = args.success_line)
     if success:
         print("Success")
         quit_good(args.run_after)
