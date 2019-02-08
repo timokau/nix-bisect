@@ -338,6 +338,7 @@ def main():
                 quit_skip(args.run_after, None)
         print("Instantiating")
         drv = instantiate(args.installable, args.nixpkgs_dir)
+        print(drv)
         if drv is None:
             print("Failed")
             quit_skip(args.run_after, skip_cache)
