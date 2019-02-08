@@ -359,12 +359,6 @@ def main():
         print("Ignoring cache")
         success = None
     if success is None:
-        (build, fetched) = dry_run(drv)
-        rebuilds = len(build)
-        if rebuilds > 200: # FIXME
-            print(f"{rebuilds} rebuild necessary, skipping.")
-            quit_skip(args.run_after, skip_cache)
-        else:
             print("Building dependencies")
             success = build_dependencies(drv)
             if not success:
