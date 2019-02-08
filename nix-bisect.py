@@ -382,10 +382,4 @@ def main():
         quit_bad(args.run_after)
 
 if __name__ == "__main__":
-    import traceback
-    # try:
     main()
-    # except:
-    #     # make sure script failure doesn't mess with bisect result
-    #     traceback.print_exc()
-    #     abort()
