@@ -1,4 +1,5 @@
 #!/usr/bin/env nix-shell
+#! nix-shell -i python3 -p "python3.withPackages(ps: with ps; [ pytimeparse pexpect ])" -p nix
 # examples
 # git bisect run ~/nix-bisect/nix-bisect.py --failure-line 'pthread_create: Invalid argument' --success-line 'Sorting sources by runtime' --success-timeout 5m sage.tests --run-before 'git reset --hard && git -c rerere.enabled=false merge --no-commit BISECT_HEAD'
 # git bisect run ~/nix-bisect/nix-bisect.py --failure-line 'pthread_create: Invalid argument' --success-line 'Sorting sources by runtime' --timeout 5m sage.tests --run-before 'git reset --hard && git diff HEAD..timokau/sage-8.5 pkgs/applications/science/math/sage | patch -p1' --no-skip-range
