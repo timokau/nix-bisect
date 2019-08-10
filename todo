@@ -1,0 +1,28 @@
+intelligently handle out of space
+interact option
+auto-optimize
+time
+limit memory
+disable checks
+
+richer cache (skip reason, rebuild count, drv per commit)
+interact on skip, then rerun
+# TODO make sure logs get preserved on early exit
+# TODO timeout
+# TODO multiple steps to narrow down
+# TODO automatically find first bad
+# TODO estimate build time
+# TODO garbage collect
+# TODO failure__line, success_line, timeout, timeout_means, auto success timeout
+# TODO builder for .* failed with exit code n
+# on bad exit, on line (streaming) etc.
+# runtime tests
+# patches
+# bisect over all versions
+# timeout_success (33 minutes)
+# TODO unknown when it worked
+# TODO memnice, cgroups, https://unix.stackexchange.com/questions/247209/how-to-use-cgroups-to-limit-all-processes-except-whitelist-to-a-single-cpu#252825
+
+skip reasons
+log-file
+big-parallel
