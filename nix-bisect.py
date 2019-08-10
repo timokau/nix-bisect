@@ -3,7 +3,12 @@
 # examples
 # git bisect run ~/nix-bisect/nix-bisect.py --failure-line 'pthread_create: Invalid argument' --success-line 'Sorting sources by runtime' --success-timeout 5m sage.tests --run-before 'git reset --hard && git -c rerere.enabled=false merge --no-commit BISECT_HEAD'
 # git bisect run ~/nix-bisect/nix-bisect.py --failure-line 'pthread_create: Invalid argument' --success-line 'Sorting sources by runtime' --timeout 5m sage.tests --run-before 'git reset --hard && git diff HEAD..timokau/sage-8.5 pkgs/applications/science/math/sage | patch -p1' --no-skip-range
+# git bisect run ~/repos/nix-bisect/nix-bisect.py --failure-line 'Failed example' --run-after 'git reset --hard' --run-before 'git cherry-pick -n --allow-empty d2c4b5777ba22a51dcdc5f5a97e9d8e72e00d860; git cherry-pick -n --allow-empty c78f98db56b580bada5c56ef38793f4fa5c140b6' sage.doc
+# TODO --check flags to test failure/success detection
+# TODO if only <= num cpus dependencies are to be built, check logs for that
+# TODO bail on stdenv or big-parallel rebuild
 
+# TODO what if failure *and* success line are found?
 from subprocess import run, Popen, PIPE, STDOUT
 import sys
 import shutil
@@ -27,59 +32,74 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def soft_skip():
-    pass
-
 def evaluate_log(log, failure_line = None, success_line = None):
-    if success_line is not None and success_line in log:
+    """
+    Evaluates some log text (may be the whole log or just part of it).
+    Returns True if the log conclusively signals a success, False if it
+    is a failure and None if it can't be concluded.
+    """
+    is_success = success_line is not None and success_line in log
+    is_failure = failure_line is not None and failure_line in log
+    if is_success and is_failure:
+        # There is something wrong. No reasonable continuation possible,
+        # better to fail loudly.
+        print("Log has the success line *and* the failure line. Aborting.")
+        abort()
+    elif is_success:
         return True
-    elif failure_line is not None and failure_line in log:
+    elif is_failure:
         return False
     else:
         return None
 
 # either a binary cache or an earlier build
 # returns (log, success) or None
-def cached_result(drv, failure_line = None, success_line = None):
-    result = run([
+def cached_result(drv, failure_line=None, success_line=None):
+    """
+    Tries to determine the success or failure of a derivation just based
+    on caches. Returns `None` if it cannot be determined.
+    """
+    result = run(
+        [
             'nix',
             'log',
             '-f.',
             drv,
         ],
-        stdout = PIPE,
-        stderr = PIPE,
-        encoding = "utf-8",
+        stdout=PIPE,
+        stderr=PIPE,
+        encoding="utf-8",
     )
-    (built, fetched) = dry_run(drv)
+    (built, _) = dry_run(drv)
     log_text = result.stdout
     if result.returncode == 0 and len(log_text) > 0:
         if len(built) == 0:
             # TODO is this a success even if success_line is not found?
             logging.info("Successful build cached")
             return (log_text, True)
-        else:
-            success = evaluate_log(log_text, failure_line, success_line)
-            if success is not None:
-                print(f"Found cached success={success}")
-                return (log_text, success)
-            else:
-                print(f"Cache nonconclusive")
-                return (None, None)
+
+        success = evaluate_log(log_text, failure_line, success_line)
+        if success is not None:
+            print(f"Found cached success={success}")
+            return (log_text, success)
+
+        print("Cache non-conclusive")
+        return (None, None)
     else:
-        # print("Build not cached")
+        print("Build not cached")
         return (None, None)
 
 # takes time in the order of 2s
 def dry_run(drv):
-    result = run([
+    result = run(
+        [
             'nix-build',
             '--dry-run',
             drv,
         ],
-        stdout = PIPE,
-        stderr = PIPE,
-        encoding = "utf-8",
+        stdout=PIPE,
+        stderr=PIPE,
+        encoding="utf-8",
     )
     result.check_returncode()
     lines = result.stderr.splitlines()
@@ -88,40 +108,42 @@ def dry_run(drv):
     cur = fetched
     for line in lines:
         line = line.strip()
-        if "these paths will be fetched" in line :
+        if "these paths will be fetched" in line:
             cur = fetched
         elif "these derivations will be built" in line:
             cur = built
         elif line.startswith("/nix/store"):
-            cur += [ line ]
+            cur += [line]
         elif line != "":
             raise RuntimeError("dry-run parsing failed")
 
     return (built, fetched)
 
 def cur_commit():
-    result = run([
+    result = run(
+        [
             'git',
             'rev-parse',
             'HEAD',
         ],
-        stdout = PIPE,
-        stderr = PIPE,
-        encoding = "utf-8",
+        stdout=PIPE,
+        stderr=PIPE,
+        encoding="utf-8",
     )
     result.check_returncode()
     return result.stdout.strip()
 
 def commits_in_range(rev1, rev2):
-    result = run([
+    result = run(
+        [
             'git',
             'log',
             '--pretty=format:%H',
             f'{rev1}..{rev2}',
         ],
-        stdout = PIPE,
-        stderr = PIPE,
-        encoding = "utf-8",
+        stdout=PIPE,
+        stderr=PIPE,
+        encoding="utf-8",
     )
     return len(result.stdout.splitlines())
 
@@ -138,37 +160,40 @@ def abort():
 
 def skip_range(rev1, rev2):
     (rev1, rev2, commits) = range_order(rev1, rev2)
-    result = run([
+    result = run(
+        [
             'git',
             'bisect',
             'skip',
             rev1,
             f'{rev1}..{rev2}',
         ],
-        stdout = PIPE,
-        stderr = STDOUT,
-        encoding = "utf-8",
+        stdout=PIPE,
+        stderr=STDOUT,
+        encoding="utf-8",
     )
     print(f"Skipping {commits} commits")
     # max fail when bisect is done
     # result.check_returncode()
 
 def instantiate(attrname, nixpkgs_dir):
-    result = run([
+    result = run(
+        [
             'nix-instantiate',
             nixpkgs_dir,
             '-A',
             attrname,
         ],
-        stdout = PIPE,
-        stderr = PIPE,
-        encoding = "utf-8",
+        stdout=PIPE,
+        stderr=PIPE,
+        encoding="utf-8",
     )
+
     if result.returncode == 0:
         return result.stdout.strip()
-    else:
-        print(result.stderr)
-        return None
+
+    print(result.stderr)
+    return None
 
 
 def _references(storepath):
@@ -247,6 +272,8 @@ def nix_build(drv, timeout = None, on_timeout = "skip", failure_line = None, suc
     p.close()
     print(f"\nBuild finished with exit status {p.exitstatus}")
     return (log, p.exitstatus == 0)
+    # FIXME
+    # return (log, None)
 
 def cache_to_file(l, f):
     import pickle
@@ -284,6 +311,8 @@ def quit_bad(cleanup, exitcode = 1):
 def quit_skip(cleanup):
     run_cleanup(cleanup)
     print(f"{bcolors.OKBLUE}bisect: skip{bcolors.ENDC}")
+    abort() # FIXME
+    # TODO cherry-pick if not already applied
     sys.exit(125)
 
 def signal_handler(sig, frame):
@@ -328,7 +357,7 @@ def main():
             )
             if result.returncode != 0:
                 print("Failed")
-                quit_skip(args.run_after, None)
+                quit_skip(args.run_after)
         print("Instantiating")
         drv = instantiate(args.installable, args.nixpkgs_dir)
         print(drv)
@@ -352,6 +381,8 @@ def main():
         print("Ignoring cache")
         success = None
     if success is None:
+        # print("Skipping")
+        # quit_skip(args.run_after)
         print("Building dependencies")
         success = build_dependencies(drv)
         if not success:
@@ -359,7 +390,10 @@ def main():
             quit_skip(args.run_after)
         print("Building target")
         (log, success) = nix_build(drv, timeout = args.timeout, on_timeout=args.on_timeout, failure_line = args.failure_line, success_line = args.success_line)
-    if success:
+        # FIXME ignore success?!
+    if success is None:
+        quit_skip(args.run_after)
+    elif success:
         print("Success")
         quit_good(args.run_after)
     else:
