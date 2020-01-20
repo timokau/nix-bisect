@@ -133,7 +133,7 @@ def commit(message):
     result.check_returncode()
 
 
-def _perform_bisect(attrname, to_pick):
+def _perform_bisect(attrname, to_pick, max_rebuilds):
     def _quit(result, reason):
         print(f"Quit hook: {result} because of {reason}.")
 
@@ -144,6 +144,14 @@ def _perform_bisect(attrname, to_pick):
 
     drv = nix.instantiate(attrname)
     print(f"Instantiated {drv}.")
+
+    if max_rebuilds is not None:
+        num_rebuilds = len(nix.build_dry([drv])[0])
+        if num_rebuilds > max_rebuilds:
+            print(
+                f"Need to rebuild {num_rebuilds} derivations, which exceeds the maximum."
+            )
+            git_bisect.quit_skip()
 
     try:
         nix.build(nix.dependencies([drv]))
@@ -176,7 +184,16 @@ def _main():
         "attrname", type=str, help="Name of the attr to build",
     )
     parser.add_argument(
-        "--try-cherry-pick", action="append", default=[],
+        "--try-cherry-pick",
+        action="append",
+        default=[],
+        help="Cherry pick a commit before building (only if it applies without issues).",
+    )
+    parser.add_argument(
+        "--max-rebuilds",
+        type=int,
+        help="Skip when a certain rebuild count is exceeded.",
+        default=None,
     )
 
     try:
@@ -185,7 +202,7 @@ def _main():
         git_bisect.abort()
 
     with git_checkpoint():
-        _perform_bisect(args.attrname, args.try_cherry_pick)
+        _perform_bisect(args.attrname, args.try_cherry_pick, args.max_rebuilds)
 
 
 if __name__ == "__main__":
