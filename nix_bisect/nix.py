@@ -44,19 +44,45 @@ class InstantiationFailure(Exception):
     """Failure during instantiation."""
 
 
-def instantiate(attrname, nix_file="."):
-    """Instantiate an attribute."""
-    result = run(
-        ["nix-instantiate", nix_file, "-A", attrname],
-        stdout=PIPE,
-        stderr=PIPE,
-        encoding="utf-8",
-    )
+def instantiate(attrname, nix_file="./.", expression=True, system=None):
+    """Instantiate an attribute.
+
+    Parameters
+    ----------
+
+    attrname: string,
+        Attribute or expression to instantiate.
+
+    expression: bool
+        If `True`, arbitrary nix expressions can be evaluated. This
+        allows for overrides. The nix_file (or the current working
+        directory by default) will be in scope by default. I.e. the
+        expression will be implicitly prefixed by
+
+        with (import nix_file {});
+
+    nix_file: string,
+        Nix file to instantiate an attribute from.
+    """
+    if system is not None:
+        sys_arg = ["--option", "system", system]
+    else:
+        sys_arg = []
+
+    if expression:
+        if nix_file is not None:
+            arg = f"with (import {nix_file} {{}}); {attrname}"
+        else:
+            arg = attrname
+        command = ["nix-instantiate", "-E", arg] + sys_arg
+    else:
+        command = ["nix-instantiate", nix_file, "-A", arg] + sys_arg
+    result = run(command, stdout=PIPE, stderr=PIPE, encoding="utf-8",)
 
     if result.returncode == 0:
         return result.stdout.strip()
 
-    raise InstantiationFailure()
+    raise InstantiationFailure(result.stderr)
 
 
 def dependencies(drvs):
