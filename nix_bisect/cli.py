@@ -172,10 +172,15 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
         _build_result = nix.build([drv])
     except nix.BuildFailure:
         print(f"Failed to build {attrname}.")
-        git_bisect.quit_bad()
+        if failure_line is None or failure_line in nix.log(drv):
+            git_bisect.quit_bad()
+        else:
+            git_bisect.quit_skip()
 
-    # Success if build succeeded.
-    git_bisect.quit_good()
+    if failure_line is not None and failure_line in nix.log(drv):
+        git_bisect.quit_bad()
+    else:
+        git_bisect.quit_good()
 
 
 def _main():
