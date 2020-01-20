@@ -7,14 +7,15 @@ the actual testing is then performed manually.
 
 from nix_bisect import nix, test_util, git_bisect
 
+
 def _main():
     # The digikam attribute changed its name at some point.
     try:
-        digikam = nix.instantiate('digikam')
+        digikam = nix.instantiate("digikam")
     except nix.InstantiationFailure:
         # If this fails to evaluate too, the bisection will abort
         # because of the uncaught exception.
-        digikam = nix.instantiate('kde4.digikam')
+        digikam = nix.instantiate("kde4.digikam")
 
     # If a log is present for digikam but the package itself is neither
     # in the store nor substitutable, we assume a build failure. This is
@@ -45,17 +46,20 @@ def _main():
         git_bisect.quit_skip()
 
     # Give digikam a clean slate to work with.
-    test_util.shell(b"""
+    test_util.shell(
+        b"""
         echo "cleaning up"
         rm -f ~/Pictures/*.db
         rm -f ~/.config/digikamrc
         rm -rf ~/.local/share/digikam
         rm -rf ~/.cache/digikam
-    """)
+    """
+    )
 
     # Now it's time for manual testing.
     test_util.exit_code(f"{build_result[0]}/bin/digikam")
     test_util.query_user()
+
 
 if __name__ == "__main__":
     _main()

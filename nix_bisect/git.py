@@ -7,10 +7,7 @@ from math import log, floor, ceil
 def cur_commit():
     """Returns the rev of the current HEAD."""
     result = run(
-        ["git", "rev-parse", "HEAD"],
-        stdout=PIPE,
-        stderr=PIPE,
-        encoding="utf-8",
+        ["git", "rev-parse", "HEAD"], stdout=PIPE, stderr=PIPE, encoding="utf-8",
     )
     result.check_returncode()
     return result.stdout.strip()

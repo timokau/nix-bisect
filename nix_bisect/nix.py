@@ -5,9 +5,7 @@ from subprocess import run, PIPE
 
 def log(drv):
     """Returns the build log of a store path."""
-    result = run(
-        ["nix", "log", "-f.", drv], stdout=PIPE, stderr=PIPE, encoding="utf-8"
-    )
+    result = run(["nix", "log", "-f.", drv], stdout=PIPE, stderr=PIPE, encoding="utf-8")
     if result.returncode != 0:
         return None
     return result.stdout
@@ -114,10 +112,7 @@ def build(drvs):
         raise BuildFailure()
 
     location_process = run(
-        ["nix-store", "--realize"] + drvs,
-        stdout=PIPE,
-        stderr=PIPE,
-        encoding="utf-8",
+        ["nix-store", "--realize"] + drvs, stdout=PIPE, stderr=PIPE, encoding="utf-8",
     )
     location_process.check_returncode()
     storepaths = location_process.stdout.split("\n")
