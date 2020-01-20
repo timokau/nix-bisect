@@ -133,7 +133,7 @@ def commit(message):
     result.check_returncode()
 
 
-def _perform_bisect(attrname, to_pick, max_rebuilds):
+def _perform_bisect(attrname, to_pick, max_rebuilds, cached_failures):
     def _quit(result, reason):
         print(f"Quit hook: {result} because of {reason}.")
 
@@ -162,7 +162,11 @@ def _perform_bisect(attrname, to_pick, max_rebuilds):
     # If a log is present but the package itself is neither in the store nor
     # substitutable, we assume a build failure. This is not 100% accurate, but
     # the best we can do.
-    if nix.log(drv) is not None and len(nix.build_dry([drv])[0]) > 0:
+    if (
+        cached_failures
+        and nix.log(drv) is not None
+        and len(nix.build_dry([drv])[0]) > 0
+    ):
         print("Cached failure.")
         git_bisect.quit_bad()
 
@@ -195,6 +199,12 @@ def _main():
         help="Skip when a certain rebuild count is exceeded.",
         default=None,
     )
+    parser.add_argument(
+        "--cached-failures",
+        action="store_true",
+        help="Whether to try to detect cached failures (may have false-positives).",
+        default=False,
+    )
 
     try:
         args = parser.parse_args()
@@ -202,7 +212,9 @@ def _main():
         git_bisect.abort()
 
     with git_checkpoint():
-        _perform_bisect(args.attrname, args.try_cherry_pick, args.max_rebuilds)
+        _perform_bisect(
+            args.attrname, args.try_cherry_pick, args.max_rebuilds, args.cached_failures
+        )
 
 
 if __name__ == "__main__":
