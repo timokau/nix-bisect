@@ -25,8 +25,12 @@ def query_user():
             abort()
 
 
-def shell(script):
-    """Execute a shell script"""
-    process = Popen("sh", stdin=PIPE)
-    process.communicate(input=script)
+def script(text, interpreter="sh"):
+    """Execute a shell script.
+
+    The script is passed to the interpreter via stdin and the return
+    code of the interpreter is returned."""
+    process = Popen(interpreter, stdin=PIPE)
+    process.communicate(input=text)
     process.wait()
+    return process.returncode
