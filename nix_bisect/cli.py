@@ -4,7 +4,7 @@ import argparse
 from nix_bisect import nix, git, git_bisect
 
 
-def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
+def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line, build_options):
     def _quit(result, reason):
         print(f"Quit hook: {result} because of {reason}.")
 
@@ -25,7 +25,7 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
             git_bisect.quit_skip()
 
     try:
-        nix.build(nix.dependencies([drv]))
+        nix.build(nix.dependencies([drv]), build_options)
     except nix.BuildFailure:
         print("Dependencies failed to build.")
         git_bisect.quit_skip()
@@ -40,7 +40,7 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
         git_bisect.quit_bad()
 
     try:
-        _build_result = nix.build([drv])
+        _build_result = nix.build([drv], build_options)
     except nix.BuildFailure:
         print(f"Failed to build {attrname}.")
         if failure_line is None or failure_line in nix.log(drv):
@@ -78,15 +78,27 @@ def _main():
         help="Whether to try to detect cached failures with a failure line.",
         default=None,
     )
+    parser.add_argument(
+        "--build-option",
+        help="Options to pass through to `nix build` via the `--option` flag.",
+        action="append",
+        nargs=2,
+        default=[],
+    )
 
     try:
         args = parser.parse_args()
     except SystemExit:
         git_bisect.abort()
 
+    build_options = [tuple(option) for option in args.build_option]
     with git.git_checkpoint():
         _perform_bisect(
-            args.attrname, args.try_cherry_pick, args.max_rebuilds, args.failure_line
+            args.attrname,
+            args.try_cherry_pick,
+            args.max_rebuilds,
+            args.failure_line,
+            build_options,
         )
 
 

@@ -101,13 +101,28 @@ class BuildFailure(Exception):
     """A failure during build."""
 
 
-def build(drvs):
-    """Builds `drvs`, returning a list of store paths"""
+def build(drvs, options):
+    """Builds `drvs`, returning a list of store paths.
+
+    Parameters
+    ----------
+
+    drvs: list of string
+        The derivations to build.
+
+    options: list of (string, string)
+        The options to pass on to `nix build` as `--option` flags.
+    """
     if len(drvs) == 0:
         # nothing to do
         return ""
 
-    build_process = run(["nix", "build", "--no-link"] + drvs)
+    command = ["nix", "build", "--no-link"]
+
+    for (option_name, option_value) in options:
+        command += ["--option", option_name, option_value]
+
+    build_process = run(command + drvs)
     if build_process.returncode != 0:
         raise BuildFailure()
 
