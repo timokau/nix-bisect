@@ -8,4 +8,5 @@ setup(
     description="Bisect nix builds",
     author="Timo Kaufmann",
     packages=["nix_bisect"],
+    install_requires=["appdirs", "pexpect",],
 )

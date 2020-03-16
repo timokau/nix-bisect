@@ -1,18 +1,20 @@
 """Wrapper for nix functionality"""
 
-from subprocess import run, PIPE, Popen
+from subprocess import run, PIPE
 from pathlib import Path
 import json
 import re
 import sys
 
+import pexpect
+
 from appdirs import AppDirs
 
 # Parse the error output of `nix build`
-_CANNOT_BUILD_PAT = re.compile(r"^cannot build derivation '([^']+)': (.+)")
-_BUILD_FAILED_PAT = re.compile(r"^error: build of '([^']+)' failed$")
+_CANNOT_BUILD_PAT = re.compile(b"^cannot build derivation '([^']+)': (.+)")
+_BUILD_FAILED_PAT = re.compile(b"^error: build of '([^']+)' failed$")
 _BUILDER_FAILED_PAT = re.compile(
-    r"builder for '([^']+)' failed with exit code (\d+);.*"
+    b"builder for '([^']+)' failed with exit code (\\d+);.*"
 )
 
 
@@ -123,27 +125,44 @@ def _build_uncached(drvs):
         # nothing to do
         return ""
 
-    build_process = Popen(["nix", "build", "--no-link"] + drvs, stderr=PIPE, text=True)
+    # We need to use pexpect instead of subprocess.Popen here, since `nix
+    # build` will not produce its regular output when it does not detect a tty.
+    build_process = pexpect.spawn(
+        "nix", ["build", "--no-link"] + drvs, logfile=sys.stdout.buffer
+    )
 
     drvs_failed = set()
-    for line in iter(build_process.stderr.readline, ""):
-        # Can't wait for https://www.python.org/dev/peps/pep-0572/
-        match = _CANNOT_BUILD_PAT.match(line)
-        if match is not None:
-            drv = match.group(1)
-            _reason = match.group(2)
-            drvs_failed.add(drv)
-        match = _BUILD_FAILED_PAT.match(line)
-        if match is not None:
-            drv = match.group(1)
-            drvs_failed.add(drv)
-        match = _BUILDER_FAILED_PAT.match(line)
-        if match is not None:
-            drv = match.group(1)
-            _exit_code = match.group(2)
-            drvs_failed.add(drv)
+    try:
+        while True:
+            # This will fill the "match" instance attribute. Raises on EOF. We
+            # can only reliably use this for the final error output, not for
+            # the streamed output of the actual build (since `nix build` skips
+            # lines and trims output). Use `nix.log` for that.
+            build_process.expect(
+                [_CANNOT_BUILD_PAT, _BUILD_FAILED_PAT, _BUILDER_FAILED_PAT],
+                timeout=None,
+            )
 
-        sys.stdout.write(line)
+            line = build_process.match.group(0)
+            # Re-match to find out which pattern matched. This doesn't happen very
+            # often, so the wasted effort isn't too bad.
+            # Can't wait for https://www.python.org/dev/peps/pep-0572/
+            match = _CANNOT_BUILD_PAT.match(line)
+            if match is not None:
+                drv = match.group(1).decode()
+                _reason = match.group(2).decode()
+                drvs_failed.add(drv)
+            match = _BUILD_FAILED_PAT.match(line)
+            if match is not None:
+                drv = match.group(1).decode()
+                drvs_failed.add(drv)
+            match = _BUILDER_FAILED_PAT.match(line)
+            if match is not None:
+                drv = match.group(1).decode()
+                _exit_code = match.group(2).decode()
+                drvs_failed.add(drv)
+    except pexpect.exceptions.EOF:
+        pass
 
     if len(drvs_failed) > 0:
         raise BuildFailure(drvs_failed)
