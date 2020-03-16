@@ -16,8 +16,11 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
     drv = nix.instantiate(attrname)
     print(f"Instantiated {drv}.")
 
+    num_rebuilds = len(nix.build_dry([drv])[0])
+    if num_rebuilds == 0:
+        git_bisect.quit_good()
+
     if max_rebuilds is not None:
-        num_rebuilds = len(nix.build_dry([drv])[0])
         if num_rebuilds > max_rebuilds:
             print(
                 f"Need to rebuild {num_rebuilds} derivations, which exceeds the maximum."
