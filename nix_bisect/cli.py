@@ -59,7 +59,7 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
 
 def _main():
     parser = argparse.ArgumentParser(
-        description="Check the truth of statements against a corpus."
+        description="Build a package with nix, suitable for git-bisect."
     )
     parser.add_argument(
         "attrname", type=str, help="Name of the attr to build",
