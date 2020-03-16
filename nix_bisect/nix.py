@@ -1,6 +1,19 @@
 """Wrapper for nix functionality"""
 
-from subprocess import run, PIPE
+from subprocess import run, PIPE, Popen
+from pathlib import Path
+import json
+import re
+import sys
+
+from appdirs import AppDirs
+
+# Parse the error output of `nix build`
+_CANNOT_BUILD_PAT = re.compile(r"^cannot build derivation '([^']+)': (.+)")
+_BUILD_FAILED_PAT = re.compile(r"^error: build of '([^']+)' failed$")
+_BUILDER_FAILED_PAT = re.compile(
+    r"builder for '([^']+)' failed with exit code (\d+);.*"
+)
 
 
 def log(drv):
@@ -100,16 +113,40 @@ def dependencies(drvs):
 class BuildFailure(Exception):
     """A failure during build."""
 
+    def __init__(self, drvs_failed):
+        super(BuildFailure).__init__()
+        self.drvs_failed = drvs_failed
 
-def build(drvs):
-    """Builds `drvs`, returning a list of store paths"""
+
+def _build_uncached(drvs):
     if len(drvs) == 0:
         # nothing to do
         return ""
 
-    build_process = run(["nix", "build", "--no-link"] + drvs)
-    if build_process.returncode != 0:
-        raise BuildFailure()
+    build_process = Popen(["nix", "build", "--no-link"] + drvs, stderr=PIPE, text=True)
+
+    drvs_failed = set()
+    for line in iter(build_process.stderr.readline, ""):
+        # Can't wait for https://www.python.org/dev/peps/pep-0572/
+        match = _CANNOT_BUILD_PAT.match(line)
+        if match is not None:
+            drv = match.group(1)
+            _reason = match.group(2)
+            drvs_failed.add(drv)
+        match = _BUILD_FAILED_PAT.match(line)
+        if match is not None:
+            drv = match.group(1)
+            drvs_failed.add(drv)
+        match = _BUILDER_FAILED_PAT.match(line)
+        if match is not None:
+            drv = match.group(1)
+            _exit_code = match.group(2)
+            drvs_failed.add(drv)
+
+        sys.stdout.write(line)
+
+    if len(drvs_failed) > 0:
+        raise BuildFailure(drvs_failed)
 
     location_process = run(
         ["nix-store", "--realize"] + drvs, stdout=PIPE, stderr=PIPE, encoding="utf-8",
@@ -117,3 +154,38 @@ def build(drvs):
     location_process.check_returncode()
     storepaths = location_process.stdout.split("\n")
     return storepaths
+
+
+def build(drvs, use_cache=True, write_cache=True):
+    """Builds `drvs`, returning a list of store paths"""
+    cache_dir = Path(AppDirs("nix-bisect").user_cache_dir)
+    try:
+        cache_dir.mkdir(parents=True)
+    except FileExistsError:
+        pass
+
+    cache_file = cache_dir.joinpath("build-results.json")
+    if (use_cache or write_cache) and cache_file.exists():
+        with open(cache_file, "r") as cf:
+            result_cache = json.loads(cf.read())
+    else:
+        result_cache = dict()
+
+    if use_cache:
+        for drv in drvs:
+            # innocent till proven guilty
+            if not result_cache.get(drv, True):
+                print(f"Cached failure of {drv}.")
+                raise BuildFailure([drv])
+
+    try:
+        return _build_uncached(drvs)
+    except BuildFailure as bf:
+        if write_cache:
+            for drv in bf.drvs_failed:
+                # Could save more details here in the future if needed.
+                result_cache[drv] = False
+            with open(cache_file, "w") as cf:
+                # Write human-readable json for easy hacking.
+                cf.write(json.dumps(result_cache, indent=4))
+        raise bf

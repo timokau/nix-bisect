@@ -40,7 +40,10 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
         git_bisect.quit_bad()
 
     try:
-        _build_result = nix.build([drv])
+        # We already tried to access the log, it was not available. We need to
+        # actually try the build to generate the log.
+        use_cache = failure_line is None
+        _build_result = nix.build([drv], use_cache=use_cache)
     except nix.BuildFailure:
         print(f"Failed to build {attrname}.")
         if failure_line is None or failure_line in nix.log(drv):
