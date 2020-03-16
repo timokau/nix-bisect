@@ -2,6 +2,11 @@
 
 from subprocess import run, PIPE
 from pathlib import Path
+
+import struct
+import signal
+import fcntl
+import termios
 import json
 import re
 import sys
@@ -130,6 +135,18 @@ def _build_uncached(drvs):
     build_process = pexpect.spawn(
         "nix", ["build", "--no-link"] + drvs, logfile=sys.stdout.buffer
     )
+
+    # adapted from the pexpect docs
+    def _update_build_winsize():
+        s = struct.pack("HHHH", 0, 0, 0, 0)
+        a = struct.unpack(
+            "hhhh", fcntl.ioctl(sys.stdout.fileno(), termios.TIOCGWINSZ, s)
+        )
+        if not build_process.closed:
+            build_process.setwinsize(a[0], a[1])
+
+    _update_build_winsize()
+    signal.signal(signal.SIGWINCH, lambda _sig, _data: _update_build_winsize())
 
     drvs_failed = set()
     try:
