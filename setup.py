@@ -9,4 +9,5 @@ setup(
     author="Timo Kaufmann",
     packages=["nix_bisect"],
     install_requires=["appdirs", "pexpect",],
+    entry_points={"console_scripts": ["nix-bisect=nix_bisect.cli:_main",]},
 )

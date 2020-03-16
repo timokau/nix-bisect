@@ -11,7 +11,7 @@ git bisect run nix build -f. attrname
 This is not perfect though. If you use `nix-bisect` and replace that command with
 
 ```bash
-git bisect run python3 -m nix_bisect.cli attrname
+git bisect run nix-bisect attrname
 ```
 
 You get the following benefits out of the box:
@@ -25,7 +25,7 @@ In addition to that out of the box behaviour you can also use it for more comple
 
 
 ```
-git bisect run python3 -m nix_bisect.cli --try-cherry-pick e3601e1359ca340b9eda1447436c41f5aa7c5293 --max-rebuilds 500 --failure-line="TypeError:"  'sage.tests.override { files=["src/sage/env.py"]; }'
+git bisect run nix-bisect --try-cherry-pick e3601e1359ca340b9eda1447436c41f5aa7c5293 --max-rebuilds 500 --failure-line="TypeError:"  'sage.tests.override { files=["src/sage/env.py"]; }'
 ```
 
 This can be used to track down a failure in the sage build. It should be fairly self-explanatory. In addition to the benefits mentioned above, it will
