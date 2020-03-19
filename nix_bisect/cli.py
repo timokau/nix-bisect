@@ -33,28 +33,26 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
         print("Dependencies failed to build.")
         git_bisect.quit_skip()
 
-    log = nix.log(drv)
-    if failure_line is not None and log is not None and failure_line in log:
-        # We cannot use the cached log without a failure line, since nix will
-        # store partial logs for example for aborted builds.
-        git_bisect.quit_bad()
-
-    try:
-        # We already tried to access the log, it was not available. We need to
-        # actually try the build to generate the log.
-        use_cache = failure_line is None
-        _build_result = nix.build([drv], use_cache=use_cache)
-    except nix.BuildFailure:
-        print(f"Failed to build {attrname}.")
-        if failure_line is None or failure_line in nix.log(drv):
+    if failure_line is not None:
+        result = nix.log_contains(drv, failure_line)
+        if result == "yes":
+            print("Failure line detected.")
             git_bisect.quit_bad()
-        else:
+        elif result == "no_success":
+            print("Build success.")
+            git_bisect.quit_good()
+        elif result == "no_fail":
+            print("Failure without failure line.")
             git_bisect.quit_skip()
-
-    if failure_line is not None and failure_line in nix.log(drv):
-        git_bisect.quit_bad()
+        else:
+            raise Exception()
     else:
-        git_bisect.quit_good()
+        if nix.build_would_succeed([drv]):
+            print("Build success.")
+            git_bisect.quit_good()
+        else:
+            print("Build failure.")
+            git_bisect.quit_bad()
 
 
 def _main():

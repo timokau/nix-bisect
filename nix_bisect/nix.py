@@ -192,13 +192,61 @@ def _build_uncached(drvs):
     return storepaths
 
 
+def log_contains(drv, phrase, write_cache=True):
+    """Checks if the build log of `drv` contains a phrase
+
+    This may or may not cause a rebuild. Cached logs are only trusted if they
+    were produced by nix-bisect. May return "yes", "no_fail" or "no_success".
+    """
+    cache_dir = Path(AppDirs("nix-bisect").user_cache_dir)
+
+    # If we already tried this before, we can trust our own cache.
+    logfile = cache_dir.joinpath("logs").joinpath(Path(drv).name)
+    if logfile.exists():
+        with open(logfile, "r") as f:
+            log_content = f.read()
+            # We only save logs of failures.
+            return "yes" if phrase in log_content else "no_fail"
+
+    # We have to be careful with nix's cache since it might be incomplete.
+    log_content = log(drv)
+    if log_content is not None and phrase in log_content:
+        return "yes"
+
+    # Make sure the cache is populated.
+    success = True
+    try:
+        build([drv], use_cache=False, write_cache=write_cache)
+    except BuildFailure:
+        success = False
+    log_content = log(drv)
+
+    if phrase in log_content:
+        return "yes"
+    elif success:
+        return "no_success"
+    else:
+        return "no_fail"
+
+
+def build_would_succeed(drvs, use_cache=True, write_cache=True):
+    """Determines build success without actually building if possible"""
+    if len(build_dry(drvs)[0]) == 0:
+        return True
+
+    try:
+        build(drvs, use_cache, write_cache)
+        return True
+    except BuildFailure:
+        return False
+
+
 def build(drvs, use_cache=True, write_cache=True):
     """Builds `drvs`, returning a list of store paths"""
     cache_dir = Path(AppDirs("nix-bisect").user_cache_dir)
-    try:
-        cache_dir.mkdir(parents=True)
-    except FileExistsError:
-        pass
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir = cache_dir.joinpath("logs")
+    logs_dir.mkdir(exist_ok=True)
 
     cache_file = cache_dir.joinpath("build-results.json")
     if (use_cache or write_cache) and cache_file.exists():
@@ -221,6 +269,14 @@ def build(drvs, use_cache=True, write_cache=True):
             for drv in bf.drvs_failed:
                 # Could save more details here in the future if needed.
                 result_cache[drv] = False
+                # If the build finished, we know that we can trust the logs are
+                # complete if they are available. This is essential for caching
+                # "skip"s.
+                failure_log = log(drv)
+                if failure_log is not None:
+                    with open(logs_dir.joinpath(Path(drv).name), "w") as f:
+                        f.write(failure_log)
+
             with open(cache_file, "w") as cf:
                 # Write human-readable json for easy hacking.
                 cf.write(json.dumps(result_cache, indent=4))
