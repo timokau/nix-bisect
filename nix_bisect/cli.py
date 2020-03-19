@@ -4,7 +4,7 @@ import argparse
 from nix_bisect import nix, git, git_bisect
 
 
-def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
+def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
     def _quit(result, reason):
         print(f"Quit hook: {result} because of {reason}.")
 
@@ -13,7 +13,7 @@ def _perform_bisect(attrname, to_pick, max_rebuilds, failure_line):
     for rev in to_pick:
         git.try_cherry_pick(rev)
 
-    drv = nix.instantiate(attrname)
+    drv = nix.instantiate(attrname, nix_file)
     print(f"Instantiated {drv}.")
 
     num_rebuilds = len(nix.build_dry([drv])[0])
@@ -69,6 +69,13 @@ def _main():
         help="Cherry pick a commit before building (only if it applies without issues).",
     )
     parser.add_argument(
+        "--nix-file",
+        "-f",
+        help="Nix file that contains the attribute",
+        type=str,
+        default=".",
+    )
+    parser.add_argument(
         "--max-rebuilds",
         type=int,
         help="Skip when a certain rebuild count is exceeded.",
@@ -87,7 +94,11 @@ def _main():
 
     with git.git_checkpoint():
         _perform_bisect(
-            args.attrname, args.try_cherry_pick, args.max_rebuilds, args.failure_line
+            args.attrname,
+            args.nix_file,
+            args.try_cherry_pick,
+            args.max_rebuilds,
+            args.failure_line,
         )
 
 
