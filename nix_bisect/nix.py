@@ -62,7 +62,7 @@ class InstantiationFailure(Exception):
     """Failure during instantiation."""
 
 
-def instantiate(attrname, nix_file="./.", expression=True, system=None):
+def instantiate(attrname, nix_file=".", expression=True, system=None):
     """Instantiate an attribute.
 
     Parameters
@@ -89,7 +89,7 @@ def instantiate(attrname, nix_file="./.", expression=True, system=None):
 
     if expression:
         if nix_file is not None:
-            arg = f"with (import {nix_file} {{}}); {attrname}"
+            arg = f"with (import {Path(nix_file).absolute()} {{}}); {attrname}"
         else:
             arg = attrname
         command = ["nix-instantiate", "-E", arg] + sys_arg
