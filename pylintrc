@@ -64,7 +64,10 @@ confidence=
 
 # `if len(seq) != 0` is better than `if seq`
 # bad-continuation false-positives, black disagrees
-disable=len-as-condition,bad-continuation,cyclic-import,too-few-public-methods
+# I disagree with no-else-return, I think a clear "else" is more readable.
+# line-too-long is handled by black (differently)
+# disagree with too-few-public methods; such classes can still be useful.
+disable=len-as-condition,bad-continuation,no-else-return,line-too-long,too-few-public-methods
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
