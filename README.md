@@ -164,18 +164,5 @@ documented. I built this to scratch my own itch, and I continue developing it
 whenever I need some feature.
 
 Still, I can already be quite useful for some people. It is not packaged in
-nixpkgs, but if you want to try it out simply add this expression to your
-python packages:
-
-```nix
-(python3.pkgs.buildPythonPackage rec {
-  pname = "nix-bisect";
-  version = "0.2.0";
-  src = pkgs.fetchFromGitHub {
-    owner = "timokau";
-    repo = "nix-bisect";
-    rev = "v${version}";
-    sha256 = "0rg7ndwbn44kximipabfbvvv5jhgi6vs87r64wfs5by81iw0ivam";
-  };
-})
-```
+nixpkgs, but if you want to try it out simply use `nix-shell` with the
+`default.nix` provided in this repository.
