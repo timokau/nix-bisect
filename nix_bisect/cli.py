@@ -11,7 +11,7 @@ def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
     git_bisect.register_quit_hook(_quit)
 
     for rev in to_pick:
-        git.try_cherry_pick(rev)
+        git.try_cherry_pick_all(rev)
 
     drv = nix.instantiate(attrname, nix_file)
     print(f"Instantiated {drv}.")

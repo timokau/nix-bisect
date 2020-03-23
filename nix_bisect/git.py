@@ -101,22 +101,30 @@ class git_checkpoint:
         signal.signal(signal.SIGINT, s)
 
 
-def try_cherry_pick(rev):
+def try_cherry_pick_all(rev):
+    """Tries to cherry pick all parents of a (merge) commit."""
+    num_par = len(parents(rev))
+    for i in range(1, num_par + 1):
+        try_cherry_pick(rev, mainline=i)
+
+
+def try_cherry_pick(rev, mainline=1):
+    rev_name = rev + ("" if mainline == 1 else f"(mainline {mainline})")
     with assure_nothing_unstaged():
         result = run(
-            ["git", "cherry-pick", "-n", rev],
+            ["git", "cherry-pick", "--mainline", str(mainline), "-n", rev],
             stdout=PIPE,
             stderr=PIPE,
             encoding="utf-8",
         )
 
         if result.returncode != 0:
-            print("Cherry-pick failed")
+            print(f"Cherry-pick of {rev_name} failed")
             print(result.stderr.splitlines()[0][len("error: ") - 1 :])
             reset("HEAD", extra_flags=["--hard"])
             return False
 
-        print("Cherry-pick succeeded")
+        print(f"Cherry-pick of {rev_name} succeeded")
         return True
 
 
