@@ -53,22 +53,34 @@ def abort(reason=None):
     sys.exit(128)
 
 
+def print_good():
+    print(f"{_ANSI_GREEN}bisect: good{_ANSI_RESET}")
+
+
+def print_bad():
+    print(f"{_ANSI_RED}bisect: bad{_ANSI_RESET}")
+
+
+def print_skip():
+    print(f"{_ANSI_BLUE}bisect: skip{_ANSI_RESET}")
+
+
 def quit_good(reason=None):
     """Exit with an exit code that indicates success."""
     _call_quit_hooks("good", reason)
-    print(f"{_ANSI_GREEN}bisect: good{_ANSI_RESET}")
+    print_good()
     sys.exit(0)
 
 
 def quit_bad(reason=None):
     """Exit with an exit code that indicates failure."""
     _call_quit_hooks("bad", reason)
-    print(f"{_ANSI_RED}bisect: bad{_ANSI_RESET}")
+    print_bad()
     sys.exit(1)
 
 
 def quit_skip(reason=None):
     """Exit with an exit code that causes the commit to be skipped."""
     _call_quit_hooks("skip", reason)
-    print(f"{_ANSI_BLUE}bisect: skip{_ANSI_RESET}")
+    print_skip()
     sys.exit(125)

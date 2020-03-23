@@ -1,7 +1,8 @@
 """Simple command line interface for common use cases"""
 
 import argparse
-from nix_bisect import nix, git, git_bisect
+from pathlib import Path
+from nix_bisect import nix, git, git_bisect, bisect_runner
 
 
 def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
@@ -20,14 +21,16 @@ def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
             print(
                 f"Need to rebuild {num_rebuilds} derivations, which exceeds the maximum."
             )
-            return "skip"
+            return "skip rebuild_count"
 
     try:
         nix.build(nix.dependencies([drv]))
     except nix.BuildFailure as failure:
         failed_drvs = failure.drvs_failed
         print(f"Dependencies {failed_drvs} failed to build.")
-        return f"skip"
+        failed_name = Path(list(failed_drvs)[0]).name
+        skip_id = "-".join(failed_name.split("-")[1:])
+        return f"skip {skip_id}"
 
     if failure_line is not None:
         result = nix.log_contains(drv, failure_line)
@@ -39,7 +42,7 @@ def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
             return "good"
         elif result == "no_fail":
             print("Failure without failure line.")
-            return "skip"
+            return "skip unknown_build_failure"
         else:
             raise Exception()
     else:
@@ -82,28 +85,41 @@ def _main():
         help="Whether to try to detect cached failures with a failure line.",
         default=None,
     )
+    parser.add_argument(
+        "--bisect-runner",
+        action="store_true",
+        help="Use the custom bisect runner with autofix functionality.",
+        default=False,
+    )
 
     try:
         args = parser.parse_args()
     except SystemExit:
         git_bisect.abort()
 
-    with git.git_checkpoint():
-        result = _perform_bisect(
-            args.attrname,
-            args.nix_file,
-            args.try_cherry_pick,
-            args.max_rebuilds,
-            args.failure_line,
-        )
-    if result == "good":
-        git_bisect.quit_good()
-    elif result == "bad":
-        git_bisect.quit_bad()
-    elif result.startswith("skip"):
-        git_bisect.quit_skip()
+    def bisect_fun():
+        with git.git_checkpoint():
+            result = _perform_bisect(
+                args.attrname,
+                args.nix_file,
+                args.try_cherry_pick,
+                args.max_rebuilds,
+                args.failure_line,
+            )
+        return result
+
+    if not args.bisect_runner:
+        result = bisect_fun()
+        if result == "good":
+            git_bisect.quit_good()
+        elif result == "bad":
+            git_bisect.quit_bad()
+        elif result.startswith("skip"):
+            git_bisect.quit_skip()
+        else:
+            raise Exception("Unknown bisection result")
     else:
-        raise Exception("Unknown bisection result")
+        bisect_runner.BisectRunner().run(bisect_fun)
 
 
 if __name__ == "__main__":
