@@ -141,8 +141,8 @@ class BisectRunner:
                 bisect_good("HEAD")
                 git_bisect.print_good()
             elif result.startswith("skip"):
-                git_bisect.print_skip()
                 reason = result[len("skip ") :]
+                git_bisect.print_skip(reason)
                 named_skip(reason, "HEAD")
             else:
                 raise Exception("Unknown bisection result.")

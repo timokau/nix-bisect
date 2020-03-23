@@ -61,8 +61,9 @@ def print_bad():
     print(f"{_ANSI_RED}bisect: bad{_ANSI_RESET}")
 
 
-def print_skip():
-    print(f"{_ANSI_BLUE}bisect: skip{_ANSI_RESET}")
+def print_skip(reason=None):
+    skip_reason = "" if reason is None else f" ({reason})"
+    print(f"{_ANSI_BLUE}bisect: skip{skip_reason}{_ANSI_RESET}")
 
 
 def quit_good(reason=None):
