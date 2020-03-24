@@ -1,7 +1,6 @@
 """Simple command line interface for common use cases"""
 
 import argparse
-from pathlib import Path
 from nix_bisect import nix, git, git_bisect, bisect_runner
 
 
@@ -28,9 +27,7 @@ def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
     except nix.BuildFailure as failure:
         failed_drvs = failure.drvs_failed
         print(f"Dependencies {failed_drvs} failed to build.")
-        failed_name = Path(list(failed_drvs)[0]).name
-        skip_id = "-".join(failed_name.split("-")[1:])
-        return f"skip {skip_id}"
+        return f"skip dependency_failure"
 
     if failure_line is not None:
         result = nix.log_contains(drv, failure_line)
