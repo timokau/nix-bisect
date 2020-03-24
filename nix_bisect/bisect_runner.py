@@ -4,14 +4,25 @@ import subprocess
 from nix_bisect import git, git_bisect
 
 
-def named_skip(name, commit):
+def patchset_identifier(patchset):
+    """Unique string identifier for a patchset to be used in ref names"""
+    if len(patchset) == 0:
+        return "nopatch"
+    else:
+        return "/".join([f"p_{rev}" for rev in patchset])
+
+
+def named_skip(name, patchset, commit):
     """Mark a commit as belonging to a named skip range.
 
     In contrast to a regular `git bisect skip`, all commits between two commits
     in the range are considered skipped as well.
     """
     unique_name = git.rev_parse(commit)
-    git.update_ref(f"refs/bisect/break/{name}/{unique_name}", commit)
+    git.update_ref(
+        f"refs/bisect/break/{patchset_identifier(patchset)}/markers/{name}/{unique_name}",
+        commit,
+    )
 
 
 def bisect_bad(commit):
@@ -44,19 +55,46 @@ def get_good_commits():
     return good_refs
 
 
-def get_skip_range_commits():
+def get_skip_range_commits(patchset):
     """Returns all refs that are marked with some skip range."""
-    return git.get_refs_with_prefix("refs/bisect/break")
+    return git.get_refs_with_prefix(
+        f"refs/bisect/break/{patchset_identifier(patchset)}/markers"
+    )
 
 
-def get_named_skip_refs(name):
+def within_range(commit, range_markers):
+    """Whether or not a given commit is enclosed by a pair of range markers"""
+    reached_by_range = False
+    for marker in range_markers:
+        if git.is_ancestor(commit, marker):
+            reached_by_range = True
+            break
+    if not reached_by_range:
+        return False
+
+    can_reach_range = False
+    for marker in range_markers:
+        if git.is_ancestor(marker, commit):
+            can_reach_range = True
+            break
+    return can_reach_range
+
+
+def get_named_skip_refs(name, patchset):
     """Returns all commits that are marked with the skip range `name`."""
-    return git.get_refs_with_prefix(f"refs/bisect/break/{name}")
+    return git.get_refs_with_prefix(
+        f"refs/bisect/break/{patchset_identifier(patchset)}/markers/{name}"
+    )
 
 
-def get_skip_ranges():
+def get_skip_ranges(patchset):
     """Returns all skip range names"""
-    return {ref.split("/")[3] for ref in git.get_refs_with_prefix("refs/bisect/break")}
+    return {
+        ref.split("/")[-2]
+        for ref in git.get_refs_with_prefix(
+            f"refs/bisect/break/{patchset_identifier(patchset)}/markers"
+        )
+    }
 
 
 def refs_for_commit(commit):
@@ -71,30 +109,28 @@ def refs_for_commit(commit):
     return result[commit]
 
 
-def skip_ranges_of_commit(commit):
+def skip_ranges_of_commit(commit, patchset):
     """Returns all named skip ranges a commit is marked with."""
     skip_ranges = []
-    print(f"Skip ranges for {commit}")
     for ref in refs_for_commit(commit):
-        print(f"Considering {ref}")
-        if ref.startswith("refs/bisect/break/"):
+        if ref.startswith(f"refs/bisect/break/{patchset_identifier(patchset)}/markers"):
             components = ref.split("/")
-            if len(components) == 5:
-                skip_ranges.append(components[3])
+            skip_ranges.append(components[-2])
     return skip_ranges
 
 
-def clear_skip_range(range_name):
+def clear_refs_with_prefix(prefix):
     """Remove all refs that belong to a skip range"""
-    for ref in git.get_refs_with_prefix(f"refs/bisect/break/{range_name}"):
+    for ref in git.get_refs_with_prefix(prefix):
         git.delete_ref(ref)
 
 
 class BisectRunner:
     """Runs a bisection"""
+
     def __init__(self):
         # Should be persisted in git somehow, but this works as a POC.
-        self.to_pick = []
+        self.patchset = []
 
     def get_next(self):
         """Computes the next commit to test.
@@ -105,7 +141,7 @@ class BisectRunner:
         May add commits for cherry pick. Returns `False` when the bisect is
         finished.
         """
-        considered_good = get_good_commits() + get_skip_range_commits()
+        considered_good = get_good_commits() + get_skip_range_commits(self.patchset)
         commit = git.get_bisect_info(considered_good, "refs/bisect/bad")["bisect_rev"]
         if git.rev_parse(commit) == git.rev_parse("refs/bisect/bad"):
             skip_ranges = []
@@ -114,13 +150,29 @@ class BisectRunner:
                 if parent in good_commits:
                     print(f"First bad found! Here it is: {commit}")
                     return None
-                skip_ranges += skip_ranges_of_commit(parent)
-            for skip_range in skip_ranges:
-                clear_skip_range(skip_range)
+                skip_ranges += skip_ranges_of_commit(parent, self.patchset)
             print(f"cherry-pick {commit} to unbreak {skip_ranges}")
-            self.to_pick.insert(0, commit)
+            self.patchset.insert(0, commit)
             return self.get_next()
         return commit
+
+    def _single_run(self, bisect_fun):
+        with git.git_checkpoint():
+            one_patch_succeeded = False
+            for (i, rev) in enumerate(self.patchset):
+                success = git.try_cherry_pick_all(rev)
+                one_patch_succeeded = success or one_patch_succeeded
+                if not one_patch_succeeded:
+                    remaining_patchset = self.patchset[i + 1 :]
+                    for skip_range in get_skip_ranges(remaining_patchset):
+                        if within_range(
+                            "HEAD", get_named_skip_refs(skip_range, remaining_patchset)
+                        ):
+                            print(
+                                f"Commit with remaining patches matches known skip range {skip_range}."
+                            )
+                            return f"skip {skip_range}"
+            return bisect_fun()
 
     def run(self, bisect_fun):
         """Finds the first bad commit"""
@@ -129,10 +181,7 @@ class BisectRunner:
             if next_commit is None:
                 return
             git.checkout(next_commit)
-            with git.git_checkpoint():
-                for rev in self.to_pick:
-                    git.try_cherry_pick_all(rev)
-                result = bisect_fun()
+            result = self._single_run(bisect_fun)
             if result == "bad":
                 bisect_bad("HEAD")
                 git_bisect.print_bad()
@@ -142,6 +191,6 @@ class BisectRunner:
             elif result.startswith("skip"):
                 reason = result[len("skip ") :]
                 git_bisect.print_skip(reason)
-                named_skip(reason, "HEAD")
+                named_skip(reason, self.patchset, "HEAD")
             else:
                 raise Exception("Unknown bisection result.")

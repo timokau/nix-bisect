@@ -116,8 +116,10 @@ def parents(rev):
 def try_cherry_pick_all(rev):
     """Tries to cherry pick all parents of a (merge) commit."""
     num_par = len(parents(rev))
+    any_success = False
     for i in range(1, num_par + 1):
-        try_cherry_pick(rev, mainline=i)
+        any_success = any_success or try_cherry_pick(rev, mainline=i)
+    return any_success
 
 
 def try_cherry_pick(rev, mainline=1):
