@@ -16,11 +16,9 @@ import pexpect
 from appdirs import AppDirs
 
 # Parse the error output of `nix build`
-_CANNOT_BUILD_PAT = re.compile(b"^cannot build derivation '([^']+)': (.+)")
-_BUILD_FAILED_PAT = re.compile(b"^error: build of '([^']+)' failed$")
-_BUILDER_FAILED_PAT = re.compile(
-    b"builder for '([^']+)' failed with exit code (\\d+);.*"
-)
+_CANNOT_BUILD_PAT = re.compile(b"cannot build derivation '([^']+)': (.+)")
+_BUILD_FAILED_PAT = re.compile(b"build of ('[^']+'(, '[^']+')*) failed")
+_BUILDER_FAILED_PAT = re.compile(b"builder for '([^']+)' failed with exit code (\\d+);")
 
 
 def log(drv):
@@ -171,8 +169,10 @@ def _build_uncached(drvs):
                 drvs_failed.add(drv)
             match = _BUILD_FAILED_PAT.match(line)
             if match is not None:
-                drv = match.group(1).decode()
-                drvs_failed.add(drv)
+                drv_list = match.group(1).decode()
+                drvs = drv_list.split(", ")
+                drvs = [drv.strip("'") for drv in drvs]  # strip quotes
+                drvs_failed.update(drvs)
             match = _BUILDER_FAILED_PAT.match(line)
             if match is not None:
                 drv = match.group(1).decode()
