@@ -19,6 +19,7 @@ from appdirs import AppDirs
 _CANNOT_BUILD_PAT = re.compile(b"cannot build derivation '([^']+)': (.+)")
 _BUILD_FAILED_PAT = re.compile(b"build of ('[^']+'(, '[^']+')*) failed")
 _BUILDER_FAILED_PAT = re.compile(b"builder for '([^']+)' failed with exit code (\\d+);")
+_BUILD_TIMEOUT_PAT = re.compile(b"building of '([^']+)' timed out after.*")
 
 
 def log(drv):
@@ -154,7 +155,12 @@ def _build_uncached(drvs):
             # the streamed output of the actual build (since `nix build` skips
             # lines and trims output). Use `nix.log` for that.
             build_process.expect(
-                [_CANNOT_BUILD_PAT, _BUILD_FAILED_PAT, _BUILDER_FAILED_PAT],
+                [
+                    _CANNOT_BUILD_PAT,
+                    _BUILD_FAILED_PAT,
+                    _BUILD_TIMEOUT_PAT,
+                    _BUILDER_FAILED_PAT,
+                ],
                 timeout=None,
             )
 
@@ -173,6 +179,10 @@ def _build_uncached(drvs):
                 drvs = drv_list.split(", ")
                 drvs = [drv.strip("'") for drv in drvs]  # strip quotes
                 drvs_failed.update(drvs)
+            match = _BUILD_TIMEOUT_PAT.match(line)
+            if match is not None:
+                drv = match.group(1).decode()
+                drvs_failed.add(drv)
             match = _BUILDER_FAILED_PAT.match(line)
             if match is not None:
                 drv = match.group(1).decode()
