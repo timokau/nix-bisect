@@ -12,7 +12,6 @@ def named_skip(name, commit):
     """
     unique_name = git.rev_parse(commit)
     git.update_ref(f"refs/bisect/break/{name}/{unique_name}", commit)
-    subprocess.check_call(["git", "bisect", "skip", commit])
 
 
 def bisect_bad(commit):
