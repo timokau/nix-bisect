@@ -1,6 +1,7 @@
 """A python reimplementation of git-bisect"""
 
 import subprocess
+from pathlib import Path
 import numpy as np
 from nix_bisect import git, git_bisect
 
@@ -24,6 +25,13 @@ def named_skip(name, patchset, commit):
     )
 
 
+def bisect_append_log(msg):
+    """Adds one line to the bisect log"""
+    path = Path(git.git_dir()).joinpath("BISECT_LOG")
+    with open(path, "a") as fp:
+        fp.write(msg + "\n")
+
+
 def bisect_bad(commit):
     """Mark a commit as bad.
 
@@ -33,7 +41,9 @@ def bisect_bad(commit):
     Unfortunately we don't have control about that. In the future we may want
     to manage the refs and the bisect-log manually.
     """
-    subprocess.check_call(["git", "bisect", "bad", commit])
+    bisect_append_log(f"# bad: {git.rev_pretty(commit)}")
+    git.update_ref(f"refs/bisect/bad", commit)
+    bisect_append_log(f"git bisect bad {commit}")
 
 
 def bisect_good(commit):
@@ -41,7 +51,10 @@ def bisect_good(commit):
 
     The same disclaimer as for `bisect_bad` applies.
     """
-    subprocess.check_call(["git", "bisect", "good", commit])
+    # alternative: `git bisect--helper bisect-write`
+    git.update_ref(f"refs/bisect/bad", commit)
+    bisect_append_log(f"# bad: {git.rev_pretty(commit)}")
+    bisect_append_log(f"git bisect bad {git.rev_parse(commit)}")
 
 
 def get_good_commits():

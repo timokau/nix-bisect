@@ -253,9 +253,14 @@ def get_bisect_info(good_commits, bad_commit):
     return info
 
 
-def rev_parse(commit_ish):
+def rev_parse(commit_ish, short=False):
     """Parses a "commit_ish" to a unique full hash"""
-    return subprocess.check_output(["git", "rev-parse", commit_ish]).decode().strip()
+    args = ["--short"] if short else []
+    return (
+        subprocess.check_output(["git", "rev-parse"] + args + [commit_ish])
+        .decode()
+        .strip()
+    )
 
 
 def update_ref(ref, value):
@@ -266,3 +271,22 @@ def update_ref(ref, value):
 def delete_ref(ref):
     """Deletes a reference."""
     subprocess.check_call(["git", "update-ref", "-d", ref])
+
+
+def git_dir():
+    """Returns the path to the .git directory (works with worktrees)"""
+    return subprocess.check_output(["git", "rev-parse", "--git-dir"]).decode().strip()
+
+
+def commit_msg(rev):
+    """Returns the short commit message summary (the first line)"""
+    return (
+        subprocess.check_output(["git", "show", "--pretty=format:%s", "-s", rev])
+        .decode()
+        .strip()
+    )
+
+
+def rev_pretty(rev):
+    """Pretty-print a revision for usage in logs."""
+    return f"[{rev_parse(rev, short=True)}] {commit_msg(rev)}"
