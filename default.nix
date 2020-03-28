@@ -15,6 +15,7 @@ let
     src = lib.cleanSource ./.;
     propagatedBuildInputs = with pkgs.python3.pkgs; [
       appdirs
+      numpy
       pexpect
     ];
   };
