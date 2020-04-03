@@ -13,6 +13,7 @@ setup(
         "console_scripts": [
             "nix-bisect=nix_bisect.cli:_main",
             "nix-build-status=nix_bisect.build_status:_main",
+            "bisect-env=nix_bisect.bisect_env:_main",
         ]
     },
 )
