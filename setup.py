@@ -14,6 +14,7 @@ setup(
             "nix-bisect=nix_bisect.cli:_main",
             "nix-build-status=nix_bisect.build_status:_main",
             "bisect-env=nix_bisect.bisect_env:_main",
+            "extra-bisect=nix_bisect.extra_bisect:_main",
         ]
     },
 )
