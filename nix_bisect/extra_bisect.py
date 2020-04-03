@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import subprocess
 from nix_bisect import bisect_runner, git
 
 
@@ -25,6 +26,7 @@ def _main():
         print("Good")
         bisect_runner.bisect_good(args.rev)
         git.checkout(bisect_runner.BisectRunner().get_next())
+        return 0
 
     good_parser.set_defaults(func=_handle_good)
 
@@ -40,6 +42,7 @@ def _main():
     def _handle_bad(args):
         bisect_runner.bisect_bad(args.rev)
         git.checkout(bisect_runner.BisectRunner().get_next())
+        return 0
 
     bad_parser.set_defaults(func=_handle_bad)
 
@@ -62,15 +65,32 @@ def _main():
         patchset = bisect_runner.read_patchset()
         bisect_runner.named_skip(args.name, patchset, args.rev)
         git.checkout(bisect_runner.BisectRunner().get_next())
+        return 0
 
     skip_parser.set_defaults(func=_handle_skip)
+
+    env_parser = subparsers.add_parser("env")
+    env_parser.add_argument(
+        "cmd", type=str, help="Command to run", default="bash", nargs="?",
+    )
+    env_parser.add_argument(
+        "args", type=str, nargs=argparse.REMAINDER,
+    )
+
+    def _handle_env(args):
+        patchset = bisect_runner.read_patchset()
+        arg_list = bisect_runner.bisect_env_args(patchset)
+        arg_list.append(args.cmd)
+        arg_list.extend(args.args)
+        return subprocess.call(["bisect-env"] + arg_list)
+
+    env_parser.set_defaults(func=_handle_env)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
         parser.print_usage()
         return 128
-    args.func(args)
-    return 0
+    return args.func(args)
 
 
 if __name__ == "__main__":

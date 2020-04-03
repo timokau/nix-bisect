@@ -149,6 +149,14 @@ def read_patchset():
     return patchset
 
 
+def bisect_env_args(patchset):
+    """Generates arguments for bisect-env to apply the patchset"""
+    args = []
+    for patch in patchset:
+        args.append(f"--try-pick={patch}")
+    return args
+
+
 class BisectRunner:
     """Runs a bisection"""
 
