@@ -52,9 +52,10 @@ def bisect_good(commit):
     The same disclaimer as for `bisect_bad` applies.
     """
     # alternative: `git bisect--helper bisect-write`
-    git.update_ref(f"refs/bisect/bad", commit)
-    bisect_append_log(f"# bad: {git.rev_pretty(commit)}")
-    bisect_append_log(f"git bisect bad {git.rev_parse(commit)}")
+    rev_parsed = git.rev_parse(commit)
+    git.update_ref(f"refs/bisect/good-{rev_parsed}", commit)
+    bisect_append_log(f"# good: {git.rev_pretty(commit)}")
+    bisect_append_log(f"git bisect good {git.rev_parse(commit)}")
 
 
 def get_good_commits():
