@@ -1,6 +1,7 @@
 """Wrapper for nix functionality"""
 
 from subprocess import run, PIPE
+import subprocess
 from pathlib import Path
 
 import struct
@@ -14,6 +15,8 @@ import sys
 import pexpect
 
 from appdirs import AppDirs
+
+from nix_bisect import exceptions
 
 # Parse the error output of `nix build`
 _CANNOT_BUILD_PAT = re.compile(b"cannot build derivation '([^']+)': (.+)")
@@ -239,10 +242,25 @@ def log_contains(drv, phrase, write_cache=True):
         return "no_fail"
 
 
-def build_would_succeed(drvs, use_cache=True, write_cache=True):
+def references(drvs):
+    """Returns all immediate dependencies of `drvs`.
+
+    Runs `nix-store --query --references` internally.
+    """
+    return (
+        subprocess.check_output(["nix-store", "--query", "--references"] + drvs)
+        .decode()
+        .splitlines()
+    )
+
+
+def build_would_succeed(drvs, max_rebuilds, use_cache=True, write_cache=True):
     """Determines build success without actually building if possible"""
-    if len(build_dry(drvs)[0]) == 0:
+    rebuild_count = len(build_dry(drvs)[0])
+    if rebuild_count == 0:
         return True
+    elif rebuild_count > max_rebuilds:
+        raise exceptions.TooManyBuildsException()
 
     try:
         build(drvs, use_cache, write_cache)

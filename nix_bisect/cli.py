@@ -1,7 +1,8 @@
 """Simple command line interface for common use cases"""
 
 import argparse
-from nix_bisect import nix, git, git_bisect, bisect_runner
+from nix_bisect import nix, git, git_bisect, bisect_runner, exceptions
+from nix_bisect.derivation import Derivation
 
 
 def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
@@ -11,44 +12,23 @@ def _perform_bisect(attrname, nix_file, to_pick, max_rebuilds, failure_line):
     drv = nix.instantiate(attrname, nix_file)
     print(f"Instantiated {drv}.")
 
-    num_rebuilds = len(nix.build_dry([drv])[0])
-    if num_rebuilds == 0:
-        return "good"
-
-    if max_rebuilds is not None:
-        if num_rebuilds > max_rebuilds:
-            print(
-                f"Need to rebuild {num_rebuilds} derivations, which exceeds the maximum."
-            )
-            return "skip rebuild_count"
-
     try:
-        nix.build(nix.dependencies([drv]))
-    except nix.BuildFailure as failure:
-        failed_drvs = failure.drvs_failed
-        print(f"Dependencies {failed_drvs} failed to build.")
-        return f"skip dependency_failure"
+        drv = Derivation(drv, max_rebuilds=max_rebuilds)
 
-    if failure_line is not None:
-        result = nix.log_contains(drv, failure_line)
-        if result == "yes":
-            print("Failure line detected.")
-            return "bad"
-        elif result == "no_success":
-            print("Build success.")
-            return "good"
-        elif result == "no_fail":
-            print("Failure without failure line.")
-            return "skip unknown_build_failure"
-        else:
-            raise Exception()
-    else:
-        if nix.build_would_succeed([drv]):
-            print("Build success.")
+        if not drv.can_build_deps():
+            failed = drv.sample_dependency_failure()
+            print(f"Dependency {failed} failed to build.")
+            return f"skip dependency_failure"
+
+        if drv.can_build():
             return "good"
         else:
-            print("Build failure.")
-            return "bad"
+            if failure_line is None or drv.log_contains(failure_line):
+                return "bad"
+            else:
+                return "skip unknown_build_failure"
+    except exceptions.ResourceConstraintException:
+        return "skip resource_constraint"
 
 
 def _main():
