@@ -43,6 +43,28 @@ def _main():
 
     bad_parser.set_defaults(func=_handle_bad)
 
+    skip_parser = subparsers.add_parser("skip")
+    skip_parser.add_argument(
+        "rev",
+        type=str,
+        default="HEAD",
+        help="Revision that will be marked as belonging to the skip range",
+        nargs="?",
+    )
+    skip_parser.add_argument(
+        "--name",
+        type=str,
+        default="default",
+        help="Name of the skip range, purely for display",
+    )
+
+    def _handle_skip(args):
+        patchset = bisect_runner.read_patchset()
+        bisect_runner.named_skip(args.name, patchset, args.rev)
+        git.checkout(bisect_runner.BisectRunner().get_next())
+
+    skip_parser.set_defaults(func=_handle_skip)
+
     args = parser.parse_args()
     if not hasattr(args, "func"):
         parser.print_usage()
