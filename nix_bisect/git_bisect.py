@@ -66,6 +66,11 @@ def print_skip(reason=None):
     print(f"{_ANSI_BLUE}bisect: skip{skip_reason}{_ANSI_RESET}")
 
 
+def print_skip_range(reason=None):
+    skip_reason = "" if reason is None else f" ({reason})"
+    print(f"{_ANSI_BLUE}bisect: skip-range{skip_reason}{_ANSI_RESET}")
+
+
 def quit_good(reason=None):
     """Exit with an exit code that indicates success."""
     _call_quit_hooks("good", reason)
@@ -85,3 +90,10 @@ def quit_skip(reason=None):
     _call_quit_hooks("skip", reason)
     print_skip()
     sys.exit(125)
+
+
+def quit_skip_range(reason=None):
+    """Exit with an exit code that causes the commit to be added to a skip range."""
+    _call_quit_hooks("skip-range", reason)
+    print_skip_range()
+    sys.exit(128)

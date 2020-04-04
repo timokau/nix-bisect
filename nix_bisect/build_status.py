@@ -49,6 +49,7 @@ def _main():
         "good": git_bisect.quit_good,
         "bad": git_bisect.quit_bad,
         "skip": git_bisect.quit_skip,
+        "skip-range": git_bisect.quit_skip_range,
         "abort": git_bisect.abort,
     }
     action_choices = actions.keys()
@@ -90,13 +91,13 @@ def _main():
     )
     parser.add_argument(
         "--on-dependency-failure",
-        default="skip",
+        default="skip-range",
         choices=action_choices,
         help="Bisect action if the expression can be successfully built",
     )
     parser.add_argument(
         "--on-failure-without-line",
-        default="skip",
+        default="skip-range",
         choices=action_choices,
         help="Bisect action if the expression can be successfully built",
     )
