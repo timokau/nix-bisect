@@ -3,6 +3,7 @@
 import sys
 import argparse
 import subprocess
+import shlex
 from nix_bisect import bisect_runner, git
 
 
@@ -85,6 +86,45 @@ def _main():
         return subprocess.call(["bisect-env"] + arg_list)
 
     env_parser.set_defaults(func=_handle_env)
+
+    run_parser = subparsers.add_parser("run")
+    run_parser.add_argument(
+        "cmd", type=str, help="Command that controls the bisect",
+    )
+    run_parser.add_argument(
+        "args", type=str, nargs=argparse.REMAINDER,
+    )
+
+    def _handle_run(args):
+        runner = bisect_runner.BisectRunner()
+        while True:
+            subprocess_args = ["bisect-env"]
+            subprocess_args.extend(
+                bisect_runner.bisect_env_args(bisect_runner.read_patchset())
+            )
+            subprocess_args.append(args.cmd)
+            subprocess_args.extend(args.args)
+
+            print("Running")
+            print(" ".join([shlex.quote(arg) for arg in subprocess_args]))
+
+            return_code = subprocess.call(subprocess_args)
+            if return_code == 0:
+                bisect_runner.bisect_good("HEAD")
+            elif return_code == 125:
+                patchset = bisect_runner.read_patchset()
+                bisect_runner.named_skip("runner-skip", patchset, "HEAD")
+            elif 1 <= return_code <= 127:
+                bisect_runner.bisect_bad("HEAD")
+            else:
+                break
+            next_commit = runner.get_next()
+            if next_commit is None:
+                break
+            git.checkout(next_commit)
+        return 0
+
+    run_parser.set_defaults(func=_handle_run)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
