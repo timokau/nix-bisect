@@ -112,6 +112,8 @@ def _main():
             if return_code == 0:
                 bisect_runner.bisect_good("HEAD")
             elif return_code == 125:
+                bisect_runner.bisect_skip("HEAD")
+            elif return_code == 128:
                 patchset = bisect_runner.read_patchset()
                 bisect_runner.named_skip("runner-skip", patchset, "HEAD")
             elif 1 <= return_code <= 127:

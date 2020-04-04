@@ -253,6 +253,23 @@ def get_bisect_info(good_commits, bad_commit):
     return info
 
 
+def get_bisect_all(good_commits, bad_commit):
+    """Returns a list with potential next commits, sorted by distance
+
+    Internally runs `git rev-list --bisect-all`.
+    """
+    # Could also be combined with --bisect-vars, that may be more efficient.
+    args = [bad_commit] + [f"^{commit}" for commit in good_commits]
+    lines = (
+        subprocess.check_output(["git", "rev-list", "--bisect-all"] + args)
+        .decode()
+        .splitlines()
+    )
+    # first is furthest away, last is equal to bad
+    commits = [line.split(" ")[0] for line in lines]
+    return commits
+
+
 def rev_parse(commit_ish, short=False):
     """Parses a "commit_ish" to a unique full hash"""
     args = ["--short"] if short else []

@@ -58,6 +58,19 @@ def bisect_good(commit):
     bisect_append_log(f"git bisect good {git.rev_parse(commit)}")
 
 
+def bisect_skip(commit):
+    """Mark a single commit as skipped.
+
+    This is the traditional `git bisect skip`. The commits skipped with this do
+    not mark a range, and the algorithm will not attempt to "unbreak" the
+    commits.
+    """
+    rev_parsed = git.rev_parse(commit)
+    git.update_ref(f"refs/bisect/skip-{rev_parsed}", commit)
+    bisect_append_log(f"# skip: {git.rev_pretty(commit)}")
+    bisect_append_log(f"git bisect skip {git.rev_parse(commit)}")
+
+
 def get_good_commits():
     """Returns all refs that are marked as good."""
     good_refs = []
@@ -119,7 +132,7 @@ def refs_for_commit(commit):
         new_set = result.get(target, set())
         new_set.add(ref)
         result[target] = new_set
-    return result[commit]
+    return result.get(commit, [])
 
 
 def skip_ranges_of_commit(commit, patchset):
@@ -157,6 +170,18 @@ def bisect_env_args(patchset):
     return args
 
 
+def first_not_skipped(commit_list):
+    """Returns the first commit of the list that is not marked as skipped"""
+    for commit in commit_list:
+        is_skipped = False
+        for ref in refs_for_commit(commit):
+            if ref.startswith("refs/bisect/skip-"):
+                is_skipped = True
+        if not is_skipped:
+            return commit
+    raise Exception("Cannot bisect any further")
+
+
 class BisectRunner:
     """Runs a bisection"""
 
@@ -171,7 +196,11 @@ class BisectRunner:
         """
         patchset = read_patchset()
         considered_good = get_good_commits() + get_skip_range_commits(patchset)
-        commit = git.get_bisect_info(considered_good, "refs/bisect/bad")["bisect_rev"]
+        candidates = git.get_bisect_all(considered_good, "refs/bisect/bad")
+        # It would be better to use a more sophisticated algorithm like
+        # https://github.com/git/git/commit/ebc9529f0358bdb10192fa27bc75f5d4e452ce90
+        # This works for now though.
+        commit = first_not_skipped(candidates)
         if git.rev_parse(commit) == git.rev_parse("refs/bisect/bad"):
             skip_ranges = []
             good_commits = [git.rev_parse(ref) for ref in get_good_commits()]
