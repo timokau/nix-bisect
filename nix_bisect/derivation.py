@@ -58,4 +58,4 @@ class Derivation:
         This may or may not actually build or fetch the derivation. If
         possible, cached information is used.
         """
-        return nix.log_contains(self.drv, line)
+        return nix.log_contains(self.drv, line) == "yes"
