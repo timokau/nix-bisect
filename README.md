@@ -65,8 +65,8 @@ git bisect bad 0729b8c55e0dfaf302af4c57546871d47a652048
 Now let `nix-bisect` take care of the actual bisection:
 
 ```bash
-nix-bisect \
-	--bisect-runner \
+extra-bisect run \
+	nix-build-status \
 	--max-rebuild 100 \
 	--failure-line 'Incompatible C type sizes. The R array type is 4 bytes while the Python array type is 8 bytes.' \
 	python3.pkgs.rpy2
@@ -103,7 +103,7 @@ git bisect run nix build -f. attrname
 This is not perfect though. If you use `nix-bisect` and replace that command with
 
 ```bash
-git bisect run nix-bisect attrname
+git bisect run nix-build-status attrname
 ```
 
 You get the following benefits out of the box:
@@ -118,7 +118,7 @@ complex use-cases. Consider this example:
 
 
 ```
-git bisect run nix-bisect --try-cherry-pick e3601e1359ca340b9eda1447436c41f5aa7c5293 --max-rebuilds 500 --failure-line="TypeError:"  'sage.tests.override { files=["src/sage/env.py"]; }'
+git bisect run bisect-env --try-pick e3601e1359ca340b9eda1447436c41f5aa7c5293 nix-build-status --max-rebuilds 500 --failure-line="TypeError:"  'sage.tests.override { files=["src/sage/env.py"]; }'
 ```
 
 This can be used to track down a failure in the sage build. It should be fairly
