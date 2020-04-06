@@ -1,7 +1,10 @@
 """High-Level interface for determining facts about a derivation as efficiently
 as possible."""
 
-from nix_bisect import nix
+from pathlib import Path
+import time
+
+from nix_bisect import nix, gcroot
 
 
 class Derivation:
@@ -15,6 +18,11 @@ class Derivation:
         """
         self.drv = drv
         self.max_rebuilds = max_rebuilds if max_rebuilds is not None else float("inf")
+        self._gcroot_name = f"nix-bisect-{Path(drv).name}-{round(time.time() * 1000.0)}"
+        gcroot.create_tmp_gcroot(self._gcroot_name, drv)
+
+    def __del__(self):
+        gcroot.delete_tmp_gcroot(self._gcroot_name)
 
     def immediate_dependencies(self):
         """Returns the derivation's immediate dependencies."""
