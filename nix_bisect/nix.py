@@ -254,11 +254,23 @@ def references(drvs):
     )
 
 
-def build_would_succeed(drvs, max_rebuilds, use_cache=True, write_cache=True):
+def build_would_succeed(
+    drvs, max_rebuilds, rebuild_blacklist, use_cache=True, write_cache=True
+):
     """Determines build success without actually building if possible"""
-    rebuild_count = len(build_dry(drvs)[0])
+    rebuilds = build_dry(drvs)[0]
+    rebuild_count = len(rebuilds)
     if rebuild_count == 0:
         return True
+
+    blacklisted = []
+    for regex in rebuild_blacklist:
+        for drv_to_rebuild in rebuilds:
+            if re.match(regex, drv_to_rebuild) is not None:
+                blacklisted.append(drv_to_rebuild)
+
+    if len(blacklisted) > 0:
+        raise exceptions.BlacklistedBuildsException(blacklisted)
     elif rebuild_count > max_rebuilds:
         raise exceptions.TooManyBuildsException()
 

@@ -19,14 +19,16 @@ def drvish_to_drv(drvish, nix_file):
 
 
 def build_status(
-    drvish, nix_file, failure_line=None, max_rebuilds=None,
+    drvish, nix_file, failure_line=None, max_rebuilds=None, rebuild_blacklist=(),
 ):
     """Determine the status of `drvish` and return the result as indicated"""
     drv = drvish_to_drv(drvish, nix_file)
     print(f"Querying status of {drv}.")
 
     try:
-        drv = Derivation(drv, max_rebuilds=max_rebuilds)
+        drv = Derivation(
+            drv, max_rebuilds=max_rebuilds, rebuild_blacklist=rebuild_blacklist
+        )
 
         if not drv.can_build_deps():
             failed = drv.sample_dependency_failure()
@@ -40,7 +42,8 @@ def build_status(
                 return "failure"
             else:
                 return "failure_without_line"
-    except exceptions.ResourceConstraintException:
+    except exceptions.ResourceConstraintException as e:
+        print(e)
         return "resource_limit"
 
 
@@ -107,6 +110,11 @@ def _main():
         choices=action_choices,
         help="Bisect action if a resource limit like rebuild count is exceeded",
     )
+    parser.add_argument(
+        "--rebuild-blacklist",
+        action="append",
+        help="If any derivation matching this regex needs to be rebuilt, the build is skipped",
+    )
 
     try:
         args = parser.parse_args()
@@ -118,6 +126,9 @@ def _main():
         args.file,
         failure_line=args.failure_line,
         max_rebuilds=args.max_rebuilds,
+        rebuild_blacklist=args.rebuild_blacklist
+        if args.rebuild_blacklist is not None
+        else (),
     )
     action_on_status = {
         "success": args.on_success,

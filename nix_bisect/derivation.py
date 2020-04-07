@@ -10,7 +10,7 @@ from nix_bisect import nix, gcroot
 class Derivation:
     """A nix derivation and common operations on it, optimized for bisect"""
 
-    def __init__(self, drv, max_rebuilds=None):
+    def __init__(self, drv, max_rebuilds=None, rebuild_blacklist=()):
         """Create a new derivation.
 
         The derivation's methods will throw TooManyBuildsException when the
@@ -18,6 +18,7 @@ class Derivation:
         """
         self.drv = drv
         self.max_rebuilds = max_rebuilds if max_rebuilds is not None else float("inf")
+        self.rebuild_blacklist = rebuild_blacklist
         self._gcroot_name = f"nix-bisect-{Path(drv).name}-{round(time.time() * 1000.0)}"
         gcroot.create_tmp_gcroot(self._gcroot_name, drv)
 
@@ -35,7 +36,9 @@ class Derivation:
         possible, cached information is used.
         """
         return nix.build_would_succeed(
-            self.immediate_dependencies(), max_rebuilds=self.max_rebuilds - 1
+            self.immediate_dependencies(),
+            max_rebuilds=self.max_rebuilds - 1,
+            rebuild_blacklist=self.rebuild_blacklist,
         )
 
     def sample_dependency_failure(self):
@@ -58,7 +61,11 @@ class Derivation:
         This may or may not actually build or fetch the derivation. If
         possible, cached information is used.
         """
-        return nix.build_would_succeed([self.drv], max_rebuilds=self.max_rebuilds)
+        return nix.build_would_succeed(
+            [self.drv],
+            max_rebuilds=self.max_rebuilds,
+            rebuild_blacklist=self.rebuild_blacklist,
+        )
 
     def log_contains(self, line):
         """Determines if the derivation's build log contains a line.
