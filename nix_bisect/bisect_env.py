@@ -6,10 +6,21 @@ import subprocess
 from nix_bisect import git_bisect, git
 
 
+class EnvSetupFailedException(Exception):
+    """Raised when a mandatory action could not be completed"""
+
+
 def run_with_env(function, env_setup):
     """Run a function in a certain environment"""
+
+    def pick(rev):
+        success = git.try_cherry_pick_all(rev)
+        if not success:
+            raise EnvSetupFailedException("Cherry-pick failed")
+
     action_to_function = {
         "try_pick": git.try_cherry_pick_all,
+        "pick": pick,
     }
 
     with git.git_checkpoint():
@@ -44,6 +55,12 @@ def _main():
         default=[],
         help="Cherry pick a commit before building (only if it applies without issues).",
     )
+    parser.add_argument(
+        "--pick",
+        action=_AppendShared,
+        default=[],
+        help="Cherry pick a commit before building, abort on failure.",
+    )
 
     try:
         args = parser.parse_args()
@@ -55,7 +72,11 @@ def _main():
     def cmd():
         return subprocess.call([args.cmd] + args.args)
 
-    return run_with_env(cmd, setup_actions)
+    try:
+        return run_with_env(cmd, setup_actions)
+    except EnvSetupFailedException:
+        print("Environment setup failed.")
+        return 125
 
 
 if __name__ == "__main__":
