@@ -9,25 +9,33 @@ from nix_bisect import nix, exceptions, git_bisect
 from nix_bisect.derivation import Derivation
 
 
-def drvish_to_drv(drvish, nix_file):
+def drvish_to_drv(drvish, nix_file, nix_options):
     """No-op on drv files, otherwise evaluate in the context of nix_file"""
     path = Path(drvish)
     if path.exists() and path.name.endswith(".drv"):
         return str(path)
     else:
-        return nix.instantiate(drvish, nix_file)
+        return nix.instantiate(drvish, nix_file, nix_options=nix_options)
 
 
 def build_status(
-    drvish, nix_file, failure_line=None, max_rebuilds=None, rebuild_blacklist=(),
+    drvish,
+    nix_file,
+    nix_options,
+    failure_line=None,
+    max_rebuilds=None,
+    rebuild_blacklist=(),
 ):
     """Determine the status of `drvish` and return the result as indicated"""
-    drv = drvish_to_drv(drvish, nix_file)
+    drv = drvish_to_drv(drvish, nix_file, nix_options=nix_options)
     print(f"Querying status of {drv}.")
 
     try:
         drv = Derivation(
-            drv, max_rebuilds=max_rebuilds, rebuild_blacklist=rebuild_blacklist
+            drv,
+            nix_options=nix_options,
+            max_rebuilds=max_rebuilds,
+            rebuild_blacklist=rebuild_blacklist,
         )
 
         if not drv.can_build_deps():
@@ -71,6 +79,14 @@ def _main():
         help="Nix file that contains the attribute",
         type=str,
         default=".",
+    )
+    parser.add_argument(
+        "--option",
+        nargs=2,
+        metavar=("name", "value"),
+        action="append",
+        default=[],
+        help="Set the Nix configuration option `name` to `value`.",
     )
     parser.add_argument(
         "--max-rebuilds", type=int, help="Number of builds to allow.", default=None,
@@ -124,6 +140,7 @@ def _main():
     status = build_status(
         args.drvish,
         args.file,
+        nix_options=args.option,
         failure_line=args.failure_line,
         max_rebuilds=args.max_rebuilds,
         rebuild_blacklist=args.rebuild_blacklist

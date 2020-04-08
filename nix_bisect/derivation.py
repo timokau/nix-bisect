@@ -10,13 +10,14 @@ from nix_bisect import nix, gcroot
 class Derivation:
     """A nix derivation and common operations on it, optimized for bisect"""
 
-    def __init__(self, drv, max_rebuilds=None, rebuild_blacklist=()):
+    def __init__(self, drv, nix_options=(), max_rebuilds=None, rebuild_blacklist=()):
         """Create a new derivation.
 
         The derivation's methods will throw TooManyBuildsException when the
         rebuild limit is exceeded.
         """
         self.drv = drv
+        self.nix_options = nix_options
         self.max_rebuilds = max_rebuilds if max_rebuilds is not None else float("inf")
         self.rebuild_blacklist = rebuild_blacklist
         self._gcroot_name = f"nix-bisect-{Path(drv).name}-{round(time.time() * 1000.0)}"
@@ -37,6 +38,7 @@ class Derivation:
         """
         return nix.build_would_succeed(
             self.immediate_dependencies(),
+            nix_options=self.nix_options,
             max_rebuilds=self.max_rebuilds - 1,
             rebuild_blacklist=self.rebuild_blacklist,
         )
@@ -50,7 +52,7 @@ class Derivation:
         """
         # This will use cached failures.
         try:
-            nix.build(self.immediate_dependencies())
+            nix.build(self.immediate_dependencies(), nix_options=self.nix_options)
         except nix.BuildFailure as bf:
             return bf.drvs_failed[0]
         return None
@@ -63,6 +65,7 @@ class Derivation:
         """
         return nix.build_would_succeed(
             [self.drv],
+            nix_options=self.nix_options,
             max_rebuilds=self.max_rebuilds,
             rebuild_blacklist=self.rebuild_blacklist,
         )

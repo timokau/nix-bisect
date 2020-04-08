@@ -25,6 +25,15 @@ _BUILDER_FAILED_PAT = re.compile(b"builder for '([^']+)' failed with exit code (
 _BUILD_TIMEOUT_PAT = re.compile(b"building of '([^']+)' timed out after.*")
 
 
+def _nix_options_to_flags(nix_options):
+    option_args = []
+    for (name, value) in nix_options:
+        option_args.append("--option")
+        option_args.append(name)
+        option_args.append(value)
+    return option_args
+
+
 def log(drv):
     """Returns the build log of a store path."""
     result = run(["nix", "log", "-f.", drv], stdout=PIPE, stderr=PIPE, encoding="utf-8")
@@ -33,11 +42,13 @@ def log(drv):
     return result.stdout
 
 
-def build_dry(drvs):
+def build_dry(drvs, nix_options=()):
     """Returns a list of drvs to be built and fetched in order to
     realize `drvs`"""
     result = run(
-        ["nix-store", "--realize", "--dry-run"] + drvs,
+        ["nix-store", "--realize", "--dry-run"]
+        + _nix_options_to_flags(nix_options)
+        + drvs,
         stdout=PIPE,
         stderr=PIPE,
         encoding="utf-8",
@@ -64,7 +75,7 @@ class InstantiationFailure(Exception):
     """Failure during instantiation."""
 
 
-def instantiate(attrname, nix_file=".", expression=True, system=None):
+def instantiate(attrname, nix_file=".", nix_options=(), expression=True):
     """Instantiate an attribute.
 
     Parameters
@@ -84,19 +95,16 @@ def instantiate(attrname, nix_file=".", expression=True, system=None):
     nix_file: string,
         Nix file to instantiate an attribute from.
     """
-    if system is not None:
-        sys_arg = ["--option", "system", system]
-    else:
-        sys_arg = []
+    option_args = _nix_options_to_flags(nix_options)
 
     if expression:
         if nix_file is not None:
             arg = f"with (import {Path(nix_file).absolute()} {{}}); {attrname}"
         else:
             arg = attrname
-        command = ["nix-instantiate", "-E", arg] + sys_arg
+        command = ["nix-instantiate", "-E", arg] + option_args
     else:
-        command = ["nix-instantiate", nix_file, "-A", arg] + sys_arg
+        command = ["nix-instantiate", nix_file, "-A", arg] + option_args
     result = run(command, stdout=PIPE, stderr=PIPE, encoding="utf-8",)
 
     if result.returncode == 0:
@@ -105,10 +113,10 @@ def instantiate(attrname, nix_file=".", expression=True, system=None):
     raise InstantiationFailure(result.stderr)
 
 
-def dependencies(drvs):
+def dependencies(drvs, nix_options=()):
     """Returns all dependencies of `drvs` that aren't already in the
     store."""
-    (to_build, to_fetch) = build_dry(drvs)
+    (to_build, to_fetch) = build_dry(drvs, nix_options=nix_options)
     to_realize = to_build + to_fetch
     for drv in drvs:
         try:
@@ -127,7 +135,7 @@ class BuildFailure(Exception):
         self.drvs_failed = drvs_failed
 
 
-def _build_uncached(drvs):
+def _build_uncached(drvs, nix_options=()):
     if len(drvs) == 0:
         # nothing to do
         return ""
@@ -135,7 +143,9 @@ def _build_uncached(drvs):
     # We need to use pexpect instead of subprocess.Popen here, since `nix
     # build` will not produce its regular output when it does not detect a tty.
     build_process = pexpect.spawn(
-        "nix", ["build", "--no-link"] + drvs, logfile=sys.stdout.buffer
+        "nix",
+        ["build", "--no-link"] + _nix_options_to_flags(nix_options) + drvs,
+        logfile=sys.stdout.buffer,
     )
 
     # adapted from the pexpect docs
@@ -255,10 +265,15 @@ def references(drvs):
 
 
 def build_would_succeed(
-    drvs, max_rebuilds, rebuild_blacklist, use_cache=True, write_cache=True
+    drvs,
+    nix_options=(),
+    max_rebuilds=float("inf"),
+    rebuild_blacklist=(),
+    use_cache=True,
+    write_cache=True,
 ):
     """Determines build success without actually building if possible"""
-    rebuilds = build_dry(drvs)[0]
+    rebuilds = build_dry(drvs, nix_options=nix_options)[0]
     rebuild_count = len(rebuilds)
     if rebuild_count == 0:
         return True
@@ -275,13 +290,15 @@ def build_would_succeed(
         raise exceptions.TooManyBuildsException()
 
     try:
-        build(drvs, use_cache, write_cache)
+        build(
+            drvs, nix_options=nix_options, use_cache=use_cache, write_cache=write_cache
+        )
         return True
     except BuildFailure:
         return False
 
 
-def build(drvs, use_cache=True, write_cache=True):
+def build(drvs, nix_options=(), use_cache=True, write_cache=True):
     """Builds `drvs`, returning a list of store paths"""
     cache_dir = Path(AppDirs("nix-bisect").user_cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -303,7 +320,7 @@ def build(drvs, use_cache=True, write_cache=True):
                 raise BuildFailure([drv])
 
     try:
-        return _build_uncached(drvs)
+        return _build_uncached(drvs, nix_options)
     except BuildFailure as bf:
         if write_cache:
             for drv in bf.drvs_failed:
