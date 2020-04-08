@@ -12,6 +12,13 @@ def patchset_identifier(patchset):
     return "/".join(components)
 
 
+def bisect_append_log(msg):
+    """Adds one line to the bisect log"""
+    path = Path(git.git_dir()).joinpath("BISECT_LOG")
+    with open(path, "a") as fp:
+        fp.write(msg + "\n")
+
+
 def named_skip(name, patchset, commit):
     """Mark a commit as belonging to a named skip range.
 
@@ -23,13 +30,8 @@ def named_skip(name, patchset, commit):
         f"refs/bisect/break/{patchset_identifier(patchset)}/markers/{name}/{unique_name}",
         commit,
     )
-
-
-def bisect_append_log(msg):
-    """Adds one line to the bisect log"""
-    path = Path(git.git_dir()).joinpath("BISECT_LOG")
-    with open(path, "a") as fp:
-        fp.write(msg + "\n")
+    bisect_append_log(f"# skip-range: {git.rev_pretty(commit)}")
+    bisect_append_log(f"extra-bisect skip-range {git.rev_parse(commit)}")
 
 
 def bisect_bad(commit):
