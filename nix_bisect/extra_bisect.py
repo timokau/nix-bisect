@@ -137,7 +137,7 @@ def _main():
             elif return_code == 125:
                 git_bisect.print_skip()
                 bisect_runner.bisect_skip("HEAD")
-            elif return_code == 128:
+            elif return_code == 129:
                 git_bisect.print_skip_range()
                 patchset = bisect_runner.read_patchset()
                 bisect_runner.named_skip("runner-skip", patchset, "HEAD")

@@ -92,4 +92,4 @@ def quit_skip(reason=None):
 def quit_skip_range(reason=None):
     """Exit with an exit code that causes the commit to be added to a skip range."""
     _call_quit_hooks("skip-range", reason)
-    sys.exit(128)
+    sys.exit(129)
