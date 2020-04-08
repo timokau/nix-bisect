@@ -168,6 +168,7 @@ def _main():
         "failure_without_line": args.on_failure_without_line,
         "resource_limit": args.on_resource_limit,
     }
+    print(f"Build status: {status}")
     actions[action_on_status[status]]()
 
 
