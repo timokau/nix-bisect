@@ -63,12 +63,34 @@ def _main():
     )
 
     def _handle_skip(args):
+        bisect_runner.bisect_skip(args.rev)
+        git.checkout(bisect_runner.BisectRunner().get_next())
+        return 0
+
+    skip_parser.set_defaults(func=_handle_skip)
+
+    skip_range_parser = subparsers.add_parser("skip-range")
+    skip_range_parser.add_argument(
+        "rev",
+        type=str,
+        default="HEAD",
+        help="Revision that will be marked as belonging to the skip range",
+        nargs="?",
+    )
+    skip_range_parser.add_argument(
+        "--name",
+        type=str,
+        default="default",
+        help="Name of the skip range, purely for display",
+    )
+
+    def _handle_skip_range(args):
         patchset = bisect_runner.read_patchset()
         bisect_runner.named_skip(args.name, patchset, args.rev)
         git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
-    skip_parser.set_defaults(func=_handle_skip)
+    skip_range_parser.set_defaults(func=_handle_skip_range)
 
     env_parser = subparsers.add_parser("env")
     env_parser.add_argument(
