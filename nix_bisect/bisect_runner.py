@@ -41,9 +41,9 @@ def bisect_bad(commit):
     Unfortunately we don't have control about that. In the future we may want
     to manage the refs and the bisect-log manually.
     """
-    bisect_append_log(f"# bad: {git.rev_pretty(commit)}")
     git.update_ref(f"refs/bisect/bad", commit)
-    bisect_append_log(f"git bisect bad {commit}")
+    bisect_append_log(f"# bad: {git.rev_pretty(commit)}")
+    bisect_append_log(f"git bisect bad {git.rev_parse(commit)}")
 
 
 def bisect_good(commit):
