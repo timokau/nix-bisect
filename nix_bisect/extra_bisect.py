@@ -4,7 +4,7 @@ import sys
 import argparse
 import subprocess
 import shlex
-from nix_bisect import bisect_runner, git
+from nix_bisect import bisect_runner, git, git_bisect
 
 
 def _main():
@@ -132,13 +132,17 @@ def _main():
 
             return_code = subprocess.call(subprocess_args)
             if return_code == 0:
+                git_bisect.print_good()
                 bisect_runner.bisect_good("HEAD")
             elif return_code == 125:
+                git_bisect.print_skip()
                 bisect_runner.bisect_skip("HEAD")
             elif return_code == 128:
+                git_bisect.print_skip_range()
                 patchset = bisect_runner.read_patchset()
                 bisect_runner.named_skip("runner-skip", patchset, "HEAD")
             elif 1 <= return_code <= 127:
+                git_bisect.print_bad()
                 bisect_runner.bisect_bad("HEAD")
             else:
                 break
