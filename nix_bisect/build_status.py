@@ -30,9 +30,12 @@ def build_status(
     rebuild_blacklist=(),
 ):
     """Determine the status of `drvish` and return the result as indicated"""
-    drv = drvish_to_drv(
-        drvish, nix_file, nix_options=nix_options, nix_argstr=nix_argstr
-    )
+    try:
+        drv = drvish_to_drv(
+            drvish, nix_file, nix_options=nix_options, nix_argstr=nix_argstr
+        )
+    except nix.InstantiationFailure:
+        return "instantiation_failure"
     print(f"Querying status of {drv}.")
 
     try:
@@ -134,6 +137,12 @@ def _main():
         help="Bisect action if the expression can be successfully built",
     )
     parser.add_argument(
+        "--on-instantiation-failure",
+        default="skip-range",
+        choices=action_choices,
+        help="Bisect action if the expression cannot be instantiated",
+    )
+    parser.add_argument(
         "--on-resource-limit",
         default="skip",
         choices=action_choices,
@@ -166,6 +175,7 @@ def _main():
         "failure": args.on_failure,
         "dependency_failure": args.on_dependency_failure,
         "failure_without_line": args.on_failure_without_line,
+        "instantiation_failure": args.on_instantiation_failure,
         "resource_limit": args.on_resource_limit,
     }
     print(f"Build status: {status}")
