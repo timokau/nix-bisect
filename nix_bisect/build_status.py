@@ -9,25 +9,30 @@ from nix_bisect import nix, exceptions, git_bisect
 from nix_bisect.derivation import Derivation
 
 
-def drvish_to_drv(drvish, nix_file, nix_options):
+def drvish_to_drv(drvish, nix_file, nix_options, nix_argstr):
     """No-op on drv files, otherwise evaluate in the context of nix_file"""
     path = Path(drvish)
     if path.exists() and path.name.endswith(".drv"):
         return str(path)
     else:
-        return nix.instantiate(drvish, nix_file, nix_options=nix_options)
+        return nix.instantiate(
+            drvish, nix_file, nix_options=nix_options, nix_argstr=nix_argstr
+        )
 
 
 def build_status(
     drvish,
     nix_file,
     nix_options,
+    nix_argstr,
     failure_line=None,
     max_rebuilds=None,
     rebuild_blacklist=(),
 ):
     """Determine the status of `drvish` and return the result as indicated"""
-    drv = drvish_to_drv(drvish, nix_file, nix_options=nix_options)
+    drv = drvish_to_drv(
+        drvish, nix_file, nix_options=nix_options, nix_argstr=nix_argstr
+    )
     print(f"Querying status of {drv}.")
 
     try:
@@ -89,6 +94,14 @@ def _main():
         help="Set the Nix configuration option `name` to `value`.",
     )
     parser.add_argument(
+        "--argstr",
+        nargs=2,
+        metavar=("name", "value"),
+        action="append",
+        default=[],
+        help="Passed on to `nix instantiate`",
+    )
+    parser.add_argument(
         "--max-rebuilds", type=int, help="Number of builds to allow.", default=None,
     )
     parser.add_argument(
@@ -141,6 +154,7 @@ def _main():
         args.drvish,
         args.file,
         nix_options=args.option,
+        nix_argstr=args.argstr,
         failure_line=args.failure_line,
         max_rebuilds=args.max_rebuilds,
         rebuild_blacklist=args.rebuild_blacklist

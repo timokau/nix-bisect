@@ -75,7 +75,7 @@ class InstantiationFailure(Exception):
     """Failure during instantiation."""
 
 
-def instantiate(attrname, nix_file=".", nix_options=(), expression=True):
+def instantiate(attrname, nix_file=".", nix_options=(), nix_argstr=(), expression=True):
     """Instantiate an attribute.
 
     Parameters
@@ -99,11 +99,22 @@ def instantiate(attrname, nix_file=".", nix_options=(), expression=True):
 
     if expression:
         if nix_file is not None:
-            arg = f"with (import {Path(nix_file).absolute()} {{}}); {attrname}"
+            # We need to simulate --argstr support since we're calling nixpkgs
+            # manually to allow for arbitrary nix expressions.
+            call_args = ""
+            for (name, val) in nix_argstr:
+                call_args += f'{name} = "{val}";'
+            arg = (
+                f"with (import {Path(nix_file).absolute()} {{{call_args}}}); {attrname}"
+            )
         else:
             arg = attrname
         command = ["nix-instantiate", "-E", arg] + option_args
     else:
+        for name, val in nix_argstr:
+            option_args.append("--argstr")
+            option_args.append(name)
+            option_args.append(val)
         command = ["nix-instantiate", nix_file, "-A", arg] + option_args
     result = run(command, stdout=PIPE, stderr=PIPE, encoding="utf-8",)
 
