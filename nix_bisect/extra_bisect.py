@@ -188,7 +188,9 @@ def _main():
     parser = argparse.ArgumentParser(description="git-bisect with extra features")
 
     subparsers = parser.add_subparsers(
-        title="subcommands", description="valid subcommands", help="additional help"
+        title="subcommands",
+        description="You can use one of the following subcommands:",
+        help="Each subcommand has its own `--help` page. Also see `man git-bisect` since many of the commands are similar.",
     )
 
     _setup_good_parser(subparsers.add_parser("good"))
