@@ -1,6 +1,6 @@
 # Changes for nix-bisect
 
-## [unreleased]
+## [0.4.1] - 2020-04-09
 
 - Gracefully handle `extra-bisect` commands when no good or bad commit is
   provided yet.
@@ -50,7 +50,8 @@ This is the first release with outside contributions. Thank you @bhipple and
 
 - Initial version, library only
 
-[unreleased]: https://github.com/timokau/nix-bisect/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/timokau/nix-bisect/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/timokau/nix-bisect/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/timokau/nix-bisect/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/timokau/nix-bisect/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/timokau/nix-bisect/compare/v0.1.0...v0.2.0

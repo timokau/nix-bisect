@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="nix-bisect",
-    version="0.4.0",
+    version="0.4.1",
     description="Bisect nix builds",
     author="Timo Kaufmann",
     packages=["nix_bisect"],
