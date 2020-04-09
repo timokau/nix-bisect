@@ -1,5 +1,21 @@
 # Changes for nix-bisect
 
+## [unreleased]
+
+- Support for regular `skip` in the bisect runner. This is in addition to `skip-range`.
+- More reliable parsing of `nix build` error output.
+- Reuse of old skip-ranges when the cherry-picks that are supposed to unbreak them do not apply.
+- Patchsets are now persisted in the git tree, so the bisection can be aborted and resumed.
+- Nicer output in the bisect log.
+- High-Level Derivation interface.
+- Split of the CLI into `nix-build-status`, `extra-bisect` and `bisect-env`.
+- Make use of gcroots to prevent repeated builds.
+- Some builds can now be blacklisted so that they will always lead to skips.
+- Options and argstrings can be passed through to nix.
+
+This is the first release with outside contributions. Thank you @bhipple and
+@lheckemann.
+
 ## [0.3.0] - 2020-03-24
 
 - Successful cached builds are no longer unnecessarily fetched.
