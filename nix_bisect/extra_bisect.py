@@ -1,5 +1,3 @@
-"""Bisect runner with that little extra"""
-
 import sys
 import argparse
 import subprocess
@@ -171,6 +169,21 @@ def _setup_run_parser(parser):
     parser.set_defaults(func=_handle_run)
 
 
+def _setup_reset_parser(parser):
+    parser.add_argument("commit", nargs="?")
+
+    def _handle_reset(args):
+        try:
+            extra_args = [args.commit] if args.commit is not None else []
+            subprocess.check_call(["git", "bisect", "reset"] + extra_args)
+        except subprocess.CalledProcessError:
+            # `git bisect reset` already prints the appropriate error message
+            return 1
+        return 0
+
+    parser.set_defaults(func=_handle_reset)
+
+
 def _main():
     parser = argparse.ArgumentParser(description="git-bisect with extra features")
 
@@ -185,6 +198,7 @@ def _main():
     _setup_env_parser(subparsers.add_parser("env"))
     _setup_run_parser(subparsers.add_parser("run"))
     _setup_start_parser(subparsers.add_parser("start"))
+    _setup_reset_parser(subparsers.add_parser("reset"))
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
