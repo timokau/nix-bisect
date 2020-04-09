@@ -57,9 +57,7 @@ log of the failed attempt, the line
 seems pretty distinctive. Now we can go ahead with the bisect.
 
 ```bash
-git bisect start
-git bisect good HEAD
-git bisect bad 0729b8c55e0dfaf302af4c57546871d47a652048
+extra-bisect start 0729b8c55e0dfaf302af4c57546871d47a652048 HEAD
 ```
 
 Now let `nix-bisect` take care of the actual bisection:

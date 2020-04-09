@@ -7,6 +7,23 @@ import shlex
 from nix_bisect import bisect_runner, git, git_bisect
 
 
+def _setup_start_parser(parser):
+    parser.add_argument("bad", nargs="?")
+    parser.add_argument("good", nargs="*", default=[])
+
+    def _handle_start(args):
+        try:
+            extra_args = [args.bad] if args.bad is not None else []
+            extra_args.extend(args.good)
+            subprocess.check_call(["git", "bisect", "start"] + extra_args)
+        except subprocess.CalledProcessError:
+            # `git bisect start` already prints the appropriate error message
+            return 1
+        return 0
+
+    parser.set_defaults(func=_handle_start)
+
+
 def _setup_good_parser(parser):
     parser.add_argument(
         "rev",
@@ -167,6 +184,7 @@ def _main():
     _setup_skip_range_parser(subparsers.add_parser("skip-range"))
     _setup_env_parser(subparsers.add_parser("env"))
     _setup_run_parser(subparsers.add_parser("run"))
+    _setup_start_parser(subparsers.add_parser("start"))
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
