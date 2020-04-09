@@ -63,15 +63,37 @@ def build_status(
         return "resource_limit"
 
 
+class _ActionChoices(list):
+    def __init__(self):
+        self.named_choices = ["good", "bad", "skip", "skip-range"]
+        # Add a dummy choice that will only show up in --help but will not
+        # actually be accepted.
+        choice_list = self.named_choices + ["<int>"]
+        super().__init__(choice_list)
+
+    # An extension of list that just pretends every integer is a member. Used
+    # to accept arbitrary return codes as choices (in addition to named
+    # actions).
+    def __contains__(self, other):
+        if self.named_choices.__contains__(other):
+            return True
+        try:
+            _retcode = int(other)
+            return True
+        except ValueError:
+            return False
+
+
 def _main():
-    actions = {
-        "good": git_bisect.quit_good,
-        "bad": git_bisect.quit_bad,
-        "skip": git_bisect.quit_skip,
-        "skip-range": git_bisect.quit_skip_range,
-        "abort": git_bisect.abort,
-    }
-    action_choices = actions.keys()
+    def to_exit_code(action):
+        try:
+            return int(action)
+        except ValueError:
+            return {"good": 0, "bad": 1, "skip": 125, "skip-range": 129, "abort": 128,}[
+                action
+            ]
+
+    action_choices = _ActionChoices()
 
     parser = argparse.ArgumentParser(
         description="Build a package with nix, suitable for git-bisect."
@@ -179,7 +201,7 @@ def _main():
         "resource_limit": args.on_resource_limit,
     }
     print(f"Build status: {status}")
-    actions[action_on_status[status]]()
+    sys.exit(to_exit_code(action_on_status[status]))
 
 
 if __name__ == "__main__":
