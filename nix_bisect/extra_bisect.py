@@ -127,8 +127,9 @@ def _main():
             subprocess_args.append(args.cmd)
             subprocess_args.extend(args.args)
 
-            print("Running")
-            print(" ".join([shlex.quote(arg) for arg in subprocess_args]))
+            quoted_cmd = " ".join([shlex.quote(arg) for arg in subprocess_args])
+            bisect_runner.bisect_append_log(f"# $ {quoted_cmd}")
+            print(f"$ {quoted_cmd}")
 
             return_code = subprocess.call(subprocess_args)
             if return_code == 0:
