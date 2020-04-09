@@ -7,15 +7,8 @@ import shlex
 from nix_bisect import bisect_runner, git, git_bisect
 
 
-def _main():
-    parser = argparse.ArgumentParser(description="git-bisect with extra features")
-
-    subparsers = parser.add_subparsers(
-        title="subcommands", description="valid subcommands", help="additional help"
-    )
-
-    good_parser = subparsers.add_parser("good")
-    good_parser.add_argument(
+def _setup_good_parser(parser):
+    parser.add_argument(
         "rev",
         type=str,
         default="HEAD",
@@ -29,10 +22,11 @@ def _main():
         git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
-    good_parser.set_defaults(func=_handle_good)
+    parser.set_defaults(func=_handle_good)
 
-    bad_parser = subparsers.add_parser("bad")
-    bad_parser.add_argument(
+
+def _setup_bad_parser(parser):
+    parser.add_argument(
         "rev",
         type=str,
         default="HEAD",
@@ -45,17 +39,18 @@ def _main():
         git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
-    bad_parser.set_defaults(func=_handle_bad)
+    parser.set_defaults(func=_handle_bad)
 
-    skip_parser = subparsers.add_parser("skip")
-    skip_parser.add_argument(
+
+def _setup_skip_parser(parser):
+    parser.add_argument(
         "rev",
         type=str,
         default="HEAD",
         help="Revision that will be marked as belonging to the skip range",
         nargs="?",
     )
-    skip_parser.add_argument(
+    parser.add_argument(
         "--name",
         type=str,
         default="default",
@@ -67,17 +62,18 @@ def _main():
         git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
-    skip_parser.set_defaults(func=_handle_skip)
+    parser.set_defaults(func=_handle_skip)
 
-    skip_range_parser = subparsers.add_parser("skip-range")
-    skip_range_parser.add_argument(
+
+def _setup_skip_range_parser(parser):
+    parser.add_argument(
         "rev",
         type=str,
         default="HEAD",
         help="Revision that will be marked as belonging to the skip range",
         nargs="?",
     )
-    skip_range_parser.add_argument(
+    parser.add_argument(
         "--name",
         type=str,
         default="default",
@@ -90,13 +86,14 @@ def _main():
         git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
-    skip_range_parser.set_defaults(func=_handle_skip_range)
+    parser.set_defaults(func=_handle_skip_range)
 
-    env_parser = subparsers.add_parser("env")
-    env_parser.add_argument(
+
+def _setup_env_parser(parser):
+    parser.add_argument(
         "cmd", type=str, help="Command to run", default="bash", nargs="?",
     )
-    env_parser.add_argument(
+    parser.add_argument(
         "args", type=str, nargs=argparse.REMAINDER,
     )
 
@@ -107,13 +104,14 @@ def _main():
         arg_list.extend(args.args)
         return subprocess.call(["bisect-env"] + arg_list)
 
-    env_parser.set_defaults(func=_handle_env)
+    parser.set_defaults(func=_handle_env)
 
-    run_parser = subparsers.add_parser("run")
-    run_parser.add_argument(
+
+def _setup_run_parser(parser):
+    parser.add_argument(
         "cmd", type=str, help="Command that controls the bisect",
     )
-    run_parser.add_argument(
+    parser.add_argument(
         "args", type=str, nargs=argparse.REMAINDER,
     )
 
@@ -153,7 +151,22 @@ def _main():
             git.checkout(next_commit)
         return 0
 
-    run_parser.set_defaults(func=_handle_run)
+    parser.set_defaults(func=_handle_run)
+
+
+def _main():
+    parser = argparse.ArgumentParser(description="git-bisect with extra features")
+
+    subparsers = parser.add_subparsers(
+        title="subcommands", description="valid subcommands", help="additional help"
+    )
+
+    _setup_good_parser(subparsers.add_parser("good"))
+    _setup_bad_parser(subparsers.add_parser("bad"))
+    _setup_skip_parser(subparsers.add_parser("skip"))
+    _setup_skip_range_parser(subparsers.add_parser("skip-range"))
+    _setup_env_parser(subparsers.add_parser("env"))
+    _setup_run_parser(subparsers.add_parser("run"))
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
