@@ -34,7 +34,8 @@ def _setup_good_parser(parser):
     def _handle_good(args):
         print("Good")
         bisect_runner.bisect_good(args.rev)
-        git.checkout(bisect_runner.BisectRunner().get_next())
+        if bisect_runner.has_good_and_bad():
+            git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
     parser.set_defaults(func=_handle_good)
@@ -51,7 +52,8 @@ def _setup_bad_parser(parser):
 
     def _handle_bad(args):
         bisect_runner.bisect_bad(args.rev)
-        git.checkout(bisect_runner.BisectRunner().get_next())
+        if bisect_runner.has_good_and_bad():
+            git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
     parser.set_defaults(func=_handle_bad)
@@ -74,7 +76,8 @@ def _setup_skip_parser(parser):
 
     def _handle_skip(args):
         bisect_runner.bisect_skip(args.rev)
-        git.checkout(bisect_runner.BisectRunner().get_next())
+        if bisect_runner.has_good_and_bad():
+            git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
     parser.set_defaults(func=_handle_skip)
@@ -98,7 +101,8 @@ def _setup_skip_range_parser(parser):
     def _handle_skip_range(args):
         patchset = bisect_runner.read_patchset()
         bisect_runner.named_skip(args.name, patchset, args.rev)
-        git.checkout(bisect_runner.BisectRunner().get_next())
+        if bisect_runner.has_good_and_bad():
+            git.checkout(bisect_runner.BisectRunner().get_next())
         return 0
 
     parser.set_defaults(func=_handle_skip_range)
@@ -131,6 +135,10 @@ def _setup_run_parser(parser):
     )
 
     def _handle_run(args):
+        if not bisect_runner.has_good_and_bad():
+            print("You need to mark at least one good and one bad commit first.")
+            return 1
+
         runner = bisect_runner.BisectRunner()
         while True:
             subprocess_args = ["bisect-env"]

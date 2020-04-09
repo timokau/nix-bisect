@@ -6,6 +6,11 @@ import numpy as np
 from nix_bisect import git, git_bisect
 
 
+def has_good_and_bad():
+    """Determines if the bisect can start"""
+    return len(get_good_commits()) > 0 and git.rev_parse("refs/bisect/bad") is not None
+
+
 def patchset_identifier(patchset):
     """Unique string identifier for a patchset to be used in ref names"""
     components = ["patchset"] + patchset

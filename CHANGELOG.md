@@ -1,5 +1,10 @@
 # Changes for nix-bisect
 
+## [unreleased]
+
+- Gracefully handle `extra-bisect` commands when no good or bad commit is
+  provided yet.
+
 ## [0.4.0] - 2020-04-09
 
 - Support for regular `skip` in the bisect runner. This is in addition to `skip-range`.
