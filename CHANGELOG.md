@@ -1,6 +1,6 @@
 # Changes for nix-bisect
 
-## [unreleased]
+## [0.4.0] - 2020-04-09
 
 - Support for regular `skip` in the bisect runner. This is in addition to `skip-range`.
 - More reliable parsing of `nix build` error output.
@@ -45,6 +45,7 @@ This is the first release with outside contributions. Thank you @bhipple and
 
 - Initial version, library only
 
-[unreleased]: https://github.com/timokau/nix-bisect/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/timokau/nix-bisect/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/timokau/nix-bisect/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/timokau/nix-bisect/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/timokau/nix-bisect/compare/v0.1.0...v0.2.0
