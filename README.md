@@ -157,9 +157,11 @@ point), skipping through all build failures. Once a build finally succeeds, it
 will prompt me to manually check for a segfault and use my input to decide
 whether the current revision is good or bad.
 
-Keep in mind however that this is very early stages. Barely anything is
-documented. I built this to scratch my own itch, and I continue developing it
-whenever I need some feature.
+## How to get nix-bisect
+
+Keep in mind that this tool is in a very early stage of development.  Barely
+anything is documented.  I built this to scratch my own itch, and I continue
+developing it whenever I need some feature.
 
 Still, I can already be quite useful for some people. It is not packaged in
 nixpkgs, but if you want to try it out simply use `nix-shell` with the
