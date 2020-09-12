@@ -26,7 +26,7 @@ builder for '/nix/store/blxlihmb2a4x90x8as9f0hihwag6pa1a-python3.7-rpy2-3.2.6.dr
 error: build of '/nix/store/blxlihmb2a4x90x8as9f0hihwag6pa1a-python3.7-rpy2-3.2.6.drv' failed
 ```
 
-as a first reaction, you check the build log to get a hind of what is causing the issue:
+as a first reaction, you check the build log to get a hint of what is causing the issue:
 
 ```bash
 nix log /nix/store/blxlihmb2a4x90x8as9f0hihwag6pa1a-python3.7-rpy2-3.2.6.drv
