@@ -65,8 +65,10 @@ def build_dry(drvs, nix_options=()):
             cur = to_build
         elif line.startswith("/nix/store"):
             cur += [line]
+        elif line.startswith("warning:"):
+            print(f"dry build: {line}", file=sys.stderr)
         elif line != "":
-            raise RuntimeError("dry-run parsing failed")
+            raise RuntimeError(f"dry-run parsing failed, line was:`{line}`")
 
     return (to_build, to_fetch)
 
