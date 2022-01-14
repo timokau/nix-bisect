@@ -1,13 +1,13 @@
 """Install nix-bisect"""
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="nix-bisect",
     version="0.4.1",
     description="Bisect nix builds",
     author="Timo Kaufmann",
-    packages=["nix_bisect"],
+    packages=find_packages(),
     install_requires=["appdirs", "pexpect",],
     entry_points={
         "console_scripts": [
