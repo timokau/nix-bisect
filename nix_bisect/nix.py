@@ -59,9 +59,9 @@ def build_dry(drvs, nix_options=()):
     to_build = []
     for line in lines:
         line = line.strip()
-        if "these paths will be fetched" in line:
+        if "will be fetched" in line:
             cur = to_fetch
-        elif "these derivations will be built" in line:
+        elif "will be built" in line:
             cur = to_build
         elif line.startswith("/nix/store"):
             cur += [line]
