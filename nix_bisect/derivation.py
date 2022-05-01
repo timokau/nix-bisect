@@ -54,7 +54,7 @@ class Derivation:
         try:
             nix.build(self.immediate_dependencies(), nix_options=self.nix_options)
         except nix.BuildFailure as bf:
-            return bf.drvs_failed[0]
+            return next(iter(bf.drvs_failed))
         return None
 
     def can_build(self):

@@ -3,6 +3,7 @@
 from subprocess import run, PIPE
 import subprocess
 from pathlib import Path
+from typing import Set
 
 import struct
 import signal
@@ -143,7 +144,8 @@ def dependencies(drvs, nix_options=()):
 class BuildFailure(Exception):
     """A failure during build."""
 
-    def __init__(self, drvs_failed):
+    def __init__(self, drvs_failed: Set[str]):
+        assert len(drvs_failed) > 0, "BuildFailure requires at least one derivation to blame."
         super(BuildFailure).__init__()
         self.drvs_failed = drvs_failed
 
@@ -330,7 +332,7 @@ def build(drvs, nix_options=(), use_cache=True, write_cache=True):
             # innocent till proven guilty
             if not result_cache.get(drv, True):
                 print(f"Cached failure of {drv}.")
-                raise BuildFailure([drv])
+                raise BuildFailure(set([drv]))
 
     try:
         return _build_uncached(drvs, nix_options)
