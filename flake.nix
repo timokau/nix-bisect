@@ -1,0 +1,42 @@
+{
+  description = "Bisect nix builds.";
+
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/release-23.05";
+
+  outputs = {
+    self,
+    nixpkgs,
+  }: let
+    inherit (nixpkgs) lib;
+    systems = ["aarch64-darwin" "x86_64-linux" "aarch64-linux"];
+    systemClosure = attrs:
+      builtins.foldl' (acc: system:
+        lib.recursiveUpdate acc (attrs system)) {}
+      systems;
+  in
+    systemClosure (
+      system: let
+        pkgs = import nixpkgs {inherit system;};
+        pname = "nix-bisect";
+      in {
+        packages.${system} = {
+          default = self.packages.${system}.${pname};
+          ${pname} = pkgs.callPackage ./. {inherit pkgs;};
+        };
+
+        apps.${system} =
+          {
+            default = self.apps.${system}.nix-build-status;
+          }
+          // pkgs.lib.genAttrs [
+            "bisect-env"
+            "extra-bisect"
+            "nix-build-status"
+          ]
+          (script: {
+            type = "app";
+            program = "${self.packages.${system}.${pname}}/bin/${script}";
+          });
+      }
+    );
+}
