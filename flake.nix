@@ -1,5 +1,5 @@
 {
-  description = "Bisect nix builds.";
+  description = "Bisect nix builds. Flake maintained by @n8henrie.";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/release-23.05";
 
