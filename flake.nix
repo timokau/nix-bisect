@@ -32,10 +32,7 @@
         };
 
         apps.${system} =
-          {
-            default = self.apps.${system}.nix-build-status;
-          }
-          // pkgs.lib.genAttrs [
+          pkgs.lib.genAttrs [
             "bisect-env"
             "extra-bisect"
             "nix-build-status"
