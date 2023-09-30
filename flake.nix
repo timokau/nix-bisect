@@ -18,17 +18,20 @@
     # `packages = { system1.foo` = ...; system2.foo = ... };`
     systemClosure = attrs:
       builtins.foldl' (acc: system:
-        lib.recursiveUpdate acc (attrs system)) {}
+        lib.recursiveUpdate
+        acc (attrs system)) {}
       systems;
   in
     systemClosure (
       system: let
-        pkgs = import nixpkgs {inherit system;};
+        pkgs =
+          import nixpkgs {inherit system;};
         pname = "nix-bisect";
       in {
         packages.${system} = {
           default = self.packages.${system}.${pname};
-          ${pname} = pkgs.callPackage ./. {inherit pkgs;};
+          ${pname} =
+            pkgs.callPackage ./. {inherit pkgs;};
         };
 
         apps.${system} =
