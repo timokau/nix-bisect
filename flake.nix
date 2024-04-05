@@ -20,5 +20,6 @@
       });
 
       apps = eachSystem (system: self.packages.${system}.default.passthru.apps);
+      formatter = eachSystem (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
     };
 }
