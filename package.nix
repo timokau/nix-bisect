@@ -27,6 +27,13 @@ let
       type = "app";
       program = "${self}/bin/${script}";
     });
+
+    meta = {
+      description = "Bisect nix builds";
+      homepage = "https://github.com/timokau/nix-bisect";
+      license = lib.licenses.mit;
+      mainProgram = [ "nix-build-status" ];
+    };
   };
 in
 self
