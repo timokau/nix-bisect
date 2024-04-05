@@ -7,18 +7,5 @@
   },
   pkgs ? import pkgsPath { },
 }:
-let
-  inherit (pkgs) lib;
-  nix-bisect = pkgs.python3.pkgs.buildPythonPackage rec {
-    pname = "nix-bisect";
-    version = "git";
-    src = lib.cleanSource ./.;
-    propagatedBuildInputs = with pkgs.python3.pkgs; [
-      appdirs
-      numpy
-      pexpect
-    ];
-  };
-in
-# python3.withPackages(ps: with ps; [nix-bisect])
-nix-bisect
+
+pkgs.python3.pkgs.callPackage ./package.nix { }
