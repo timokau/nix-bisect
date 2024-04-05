@@ -1,7 +1,7 @@
 {
   description = "Bisect nix builds. Flake maintained by @n8henrie.";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/release-23.11";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   inputs.systems.url = "github:nix-systems/default";
 
   outputs =
