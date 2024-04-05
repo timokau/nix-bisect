@@ -2,16 +2,16 @@
   description = "Bisect nix builds. Flake maintained by @n8henrie.";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/release-23.11";
+  inputs.systems.url = "github:nix-systems/default";
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      systems,
+    }:
     let
-      inherit (nixpkgs) lib;
-      systems = [
-        "aarch64-darwin"
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
+      inherit (nixpkgs.lib) foldl' recursiveUpdate genAttrs;
 
       # This function build a closure that maps the above systems to a function
       # accepting a system and returning an attrset in which that system can be
@@ -20,7 +20,7 @@
       # repeat oneself. In other words, `packages.${system}.foo = ...` becomes `{
       # `packages = { system1.foo` = ...; system2.foo = ... };`
       systemClosure =
-        attrs: builtins.foldl' (acc: system: lib.recursiveUpdate acc (attrs system)) { } systems;
+        attrs: foldl' (acc: system: recursiveUpdate acc (attrs system)) { } (import systems);
     in
     systemClosure (
       system:
@@ -35,7 +35,7 @@
         };
 
         apps.${system} =
-          pkgs.lib.genAttrs
+          genAttrs
             [
               "bisect-env"
               "extra-bisect"
