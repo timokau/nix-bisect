@@ -159,7 +159,7 @@ def _build_uncached(drvs, nix_options=()):
     # build` will not produce its regular output when it does not detect a tty.
     build_process = pexpect.spawn(
         "nix",
-        ["build", "--no-link"] + _nix_options_to_flags(nix_options) + drvs,
+        ["build", "--no-link"] + _nix_options_to_flags(nix_options) + [d + "^*" if d.endswith(".drv") else d for d in drvs],
         logfile=sys.stdout.buffer,
     )
 
