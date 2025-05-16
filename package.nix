@@ -32,7 +32,7 @@ let
       description = "Bisect nix builds";
       homepage = "https://github.com/timokau/nix-bisect";
       license = lib.licenses.mit;
-      mainProgram = [ "nix-build-status" ];
+      mainProgram = "nix-build-status";
     };
   };
 in

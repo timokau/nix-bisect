@@ -36,7 +36,7 @@ def build_status(
         )
     except nix.InstantiationFailure:
         return "instantiation_failure"
-    print(f"Querying status of {drv}.")
+    print(f"Querying status of {drv!r}.")
 
     try:
         drv = Derivation(

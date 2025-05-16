@@ -37,7 +37,11 @@ def _nix_options_to_flags(nix_options):
 
 def log(drv):
     """Returns the build log of a store path."""
-    result = run(["nix", "log", "-f.", drv], stdout=PIPE, stderr=PIPE, encoding="utf-8")
+    if drv.endswith(".drv"):
+        cmd = ("nix", "log", drv)
+    else:
+        cmd = ("nix", "log", "-f.", drv)
+    result = run(cmd, stdout=PIPE, stderr=PIPE, encoding="utf-8")
     if result.returncode != 0:
         return None
     return result.stdout
