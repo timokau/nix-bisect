@@ -1,17 +1,26 @@
 """Utility functions for dealing with nix gc-roots"""
 
-from pathlib import Path
-import tempfile
 import os
+import tempfile
+from functools import cache
+from pathlib import Path
 
-STATE_DIR = Path(os.environ.get("NIX_STATE_DIR", "/nix/var/nix/"))
-USER = os.environ.get("USER", "user-unknown")
-GCROOT_DIR = Path(STATE_DIR).joinpath("gcroots/per-user").joinpath(USER)
+
+@cache
+def gcroot_dir():
+    state_dir = Path(os.environ.get("NIX_STATE_DIR", "/nix/var/nix/"))
+    user = os.environ.get("USER", "user-unknown")
+    dir = state_dir / "gcroots" / "per-user" / user
+    if dir.is_dir():
+        return dir
+
+    state_dir = os.environ.get("XDG_STATE_HOME", os.environ["HOME"] + "/.local/state")
+    return Path(state_dir) / "nix" / "gcroots"
 
 
 def gcroot_path(name):
     """Path to a gcroot file with name `name`"""
-    return GCROOT_DIR.joinpath(name)
+    return gcroot_dir() / name
 
 
 def tmp_path(name):
