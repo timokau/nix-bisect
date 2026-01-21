@@ -35,6 +35,15 @@ def _nix_options_to_flags(nix_options):
     return option_args
 
 
+def _input_overrides_to_flags(input_overrides):
+    option_args = []
+    for (name, value) in input_overrides:
+        option_args.append("--override-input")
+        option_args.append(name)
+        option_args.append(value)
+    return option_args
+
+
 def log(drv):
     """Returns the build log of a store path."""
     result = run(["nix", "log", "-f.", drv], stdout=PIPE, stderr=PIPE, encoding="utf-8")
@@ -78,6 +87,33 @@ class InstantiationFailure(Exception):
     """Failure during instantiation."""
 
 
+def flake_instantiate(attrname, flake_dir=".", nix_options=(), nix_argstr=(), input_overrides=()):
+    """Instantiate a derivation from a flake attribute.
+
+    Parameters
+    ----------
+
+    attrname: string,
+        Attribute to instantiate.
+
+    flake_dir: string,
+        Flake directory to instantiate an attribute from.
+    """
+    option_args = _nix_options_to_flags(nix_options)
+    input_args = _input_overrides_to_flags(input_overrides)
+    arg_dict = dict(nix_argstr)
+    flake_args = []
+    if 'impure' in arg_dict and arg_dict['impure'] == 'true':
+        flake_args += ['--impure']
+    command = ["nix", "eval"] + option_args + input_args + ["--raw"] + flake_args + [f"{flake_dir}#{attrname}.drvPath"]
+    result = run(command, stdout=PIPE, stderr=PIPE, encoding="utf-8",)
+
+    if result.returncode == 0:
+        return result.stdout.strip()
+
+    raise InstantiationFailure(result.stderr)
+
+
 def instantiate(attrname, nix_file=".", nix_options=(), nix_argstr=(), expression=True):
     """Instantiate an attribute.
 
@@ -99,7 +135,6 @@ def instantiate(attrname, nix_file=".", nix_options=(), nix_argstr=(), expressio
         Nix file to instantiate an attribute from.
     """
     option_args = _nix_options_to_flags(nix_options)
-
     if expression:
         if nix_file is not None:
             # We need to simulate --argstr support since we're calling nixpkgs
